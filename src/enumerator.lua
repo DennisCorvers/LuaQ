@@ -1079,33 +1079,29 @@ function Enumerator3.last(self, predicate)
     end
 end
 
----Returns the length of this collection.
+---Returns the number of elements in a sequence, optionally counting only matches.
 ---@param self table
+---@param predicate? fun(value: any, key: any): boolean
 ---@return integer
-function Enumerator3.count(self)
+function Enumerator3.count(self, predicate)
     local nextFunc, context, index = getIterator(self)
-    -- Shortcut for arrays
-    if nextFunc == ipairsFunc then
+
+    -- Shortcut for arrays. Applies only when no predicate is provided.
+    if predicate == nil and nextFunc == ipairsFunc then
         return #context
     end
 
-    local len = 0
-    for _, _ in nextFunc, context, index do
-        len = len + 1
-    end
-    return len
-end
-
----Returns the number of elements in a sequence that match a predicate.
----@param self Enumerator3
----@param predicate fun(value: any, key: any): any
----@return integer
-function Enumerator3.countBy(self, predicate)
-    assert(predicate, 'Predicate cannot be nil.')
     local count = 0
-    for k, v in getIterator(self) do
-        if predicate(v, k) == true then
+    if predicate == nil then
+        -- Shortcut when no predicate is provided.
+        for _, _ in nextFunc, context, index do
             count = count + 1
+        end
+    else
+        for key, value in nextFunc, context, index do
+            if predicate(value, key) == true then
+                count = count + 1
+            end
         end
     end
     return count
@@ -1412,7 +1408,8 @@ Enumerator3.orderByDecending = Enumerator3.sortByDescending
 Enumerator3.each = Enumerator3.foreach
 Enumerator3.for_each = Enumerator3.foreach
 Enumerator3.length = Enumerator3.count
-Enumerator3.lengthBy = Enumerator3.countBy
+Enumerator3.countBy = Enumerator3.count
+Enumerator3.lengthBy = Enumerator3.count
 Enumerator3.has = Enumerator3.contains
 Enumerator3.fold = Enumerator3.aggregate
 Enumerator3.reduce = Enumerator3.aggregate

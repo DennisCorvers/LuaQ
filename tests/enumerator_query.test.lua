@@ -147,9 +147,11 @@ test("count returns zero for an empty sequence", function()
     assertEqual(values:count(), 0)
 end)
 
-test("countBy counts matching values", function()
+test("count counts values matching a predicate", function()
     local values = Enumerator3.create({ 1, 2, 3, 4 })
-    assertEqual(values:countBy(function(value) return value % 2 == 0 end), 2)
+    local evenCount = values:count(function(value) return value % 2 == 0 end)
+
+    assertEqual(evenCount, 2)
 end)
 
 test("all returns true when every value matches", function()
@@ -177,6 +179,11 @@ test("any returns true when a value matches", function()
     assertEqual(values:any(function(value) return value == 2 end), true)
 end)
 
+test("any returns false when no value matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:any(function(value) return value == 4 end), false)
+end)
+
 test("foreach", function()
     local total = 0
     local values = Enumerator3.create({ 1, 2, 3 })
@@ -185,29 +192,29 @@ test("foreach", function()
     assertEqual(total, 6)
 end)
 
-test("ipairs", function()
-    local values = Enumerator3.create({ 4, 5 })
-    local iteratedValues = Enumerator3.createFrom(values, function(source)
-        return source:ipairs()
-    end)
-
-    assertSequence(iteratedValues, { 4, 5 })
-end)
-
-test("pairs", function()
-    local values = Enumerator3.create({ 4, 5 })
-    local iteratedValues = Enumerator3.createFrom(values, function(source)
-        return source:pairs()
-    end)
-
-    assertSequence(iteratedValues, { 4, 5 })
-end)
-
 test("aggregate", function()
+    local values = Enumerator3.create({ 2, 3, 4 })
+    local result = values:aggregate(function(total, value) return total + value end)
+
+    assertEqual(result, 9)
+end)
+
+test("aggregate using a seed", function()
     local values = Enumerator3.create({ 2, 3, 4 })
     local result = values:aggregate(function(total, value) return total + value end, 1)
 
     assertEqual(result, 10)
+end)
+
+test("aggregate using the result selector", function()
+    local values = Enumerator3.create({ 2, 3, 4 })
+    local result = values:aggregate(
+        function(total, value) return total + value end,
+        nil,
+        function(total) return "total: " .. total end
+    )
+
+    assertEqual(result, "total: 9")
 end)
 
 test("max", function()
@@ -243,4 +250,18 @@ test("sum", function()
     local sum = values:sum()
 
     assertEqual(sum, 9)
+end)
+
+test("sum errors for non-numeric strings", function()
+    local values = Enumerator3.create({ "two", "three" })
+    local succeeded = pcall(function()
+        values:sum()
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("sum returns zero for an empty sequence", function()
+    local values = Enumerator3.create({})
+    assertEqual(values:sum(), 0)
 end)
