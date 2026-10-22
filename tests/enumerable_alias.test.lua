@@ -1,6 +1,6 @@
 package.path = package.path .. ";./?.lua"
 
-local Enumerable = require("src.enumerator")
+local Enumerable = require("src.enumerable")
 local assert = require("tests.assert")
 local assertEqual = assert.equals
 local test = require("tests.test")
