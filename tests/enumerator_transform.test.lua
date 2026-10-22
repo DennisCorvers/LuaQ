@@ -41,6 +41,23 @@ test("where with index", function()
     assertSequence(values, { 0, 20, 15, 40, 75 })
 end)
 
+test("take", function()
+    local values = Enumerator3.create({ 1, 2, 3, 4 }):take(2)
+    assertSequence(values, { 1, 2 })
+end)
+
+test("take with count greater than sequence length", function()
+    local values = Enumerator3.create({ 1, 2 }):take(5)
+    assertSequence(values, { 1, 2 })
+    assertEqual(values:count(), 2)
+end)
+
+test("take with zero count", function()
+    local values = Enumerator3.create({ 1, 2, 3 }):take(0)
+    assertSequence(values, {})
+    assertEqual(values:count(), 2)
+end)
+
 test("map", function()
     local values = Enumerator3.create({ 1, 2, 3, 4 })
         :map(function(value) return value * value end)

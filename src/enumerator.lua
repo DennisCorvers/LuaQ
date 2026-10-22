@@ -203,6 +203,8 @@ local whereFunc = function(context, index)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
+    -- 4: Predicate
+    -- 5: Position
 
     if state ~= 0 then
         if state ~= 1 then
@@ -246,6 +248,8 @@ local mapFunc = function(context, index)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
+    -- 4: Selector
+    -- 5: Position
 
     if state ~= 0 then
         if state ~= 1 then
@@ -431,6 +435,55 @@ local appendFunc = function(context, index)
     end
 
     return nil, nil
+end
+
+-- TAKE
+local takeFunc = function(context, index)
+    local state = context[1]
+    local nextFunc = context[2]
+    local nextContext = context[3]
+    local count = context[4]
+    -- 5: Number of elements already yielded
+
+    if state ~= 0 then
+        if state ~= 1 then
+            return nil, nil
+        end
+    else
+        -- Initialise. Count 0 is empty sequence.
+        if count == 0 then
+            setState(context, -4)
+            return nil, nil
+        end
+
+        nextContext = initialiseContext(context)
+        state = setState(context, 1)
+    end
+
+    -- Current position exceeds the count.
+    local position = context[5]
+    if position >= count then
+        setState(context, -4)
+        return nil, nil
+    end
+
+    -- No more next items in the iterator.
+    local nextIndex, value = nextFunc(nextContext, index)
+    if nextIndex == nil then
+        setState(context, -4)
+        return nil, nil
+    end
+
+    context[5] = position + 1
+    return nextIndex, value
+end
+
+---Returns at most the specified number of elements from the start of a sequence.
+---@param count integer
+---@return Enumerator3
+function Enumerator3:take(count)
+    assert(type(count) == 'number' and count >= 0 and count % 1 == 0, 'Count must be a non-negative integer.')
+    return Enumerator3.new(takeFunc, self.index, wrapContext1(self, count))
 end
 
 -- UNIQUE / DISTINCT
