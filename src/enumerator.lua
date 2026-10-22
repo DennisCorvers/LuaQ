@@ -37,12 +37,12 @@ end
 ---@return fun():table
 local wrapContextN = function(enumerator, ...)
     local nextFunc, context = enumerator.nextFunc, enumerator.contextFactory
-    local varargs = {...}
+    local varargs = { ... }
     return function() return { 0, nextFunc, context, table.unpack(varargs) } end
 end
 
-local ipairsFunc = ipairs({0})
-local pairsFunc = pairs({'a'})
+local ipairsFunc = ipairs({ 0 })
+local pairsFunc = pairs({ 'a' })
 
 local getIterator
 
@@ -118,13 +118,13 @@ end
 local Enumerator3 = {
     __call = function(self, param, state)
         return self.nextFunc(self.contextFactory(), state)
-    end;
+    end,
     __pairs = function(self)
         return self.nextFunc, self.contextFactory(), self.index
-    end;
+    end,
     __ipairs = function(self)
         return self.nextFunc, self.contextFactory(), self.index
-    end;
+    end,
 }
 Enumerator3.__index = Enumerator3
 
@@ -241,7 +241,6 @@ function Enumerator3:where(predicate)
     return Enumerator3.new(whereFunc, self.index, wrapContext2(self, predicate, 0))
 end
 
-
 -- MAP / SELECT
 local mapFunc = function(context, index)
     local state = context[1]
@@ -281,7 +280,6 @@ function Enumerator3:map(selector)
     return Enumerator3.new(mapFunc, self.index, wrapContext2(self, selector, 0))
 end
 
-
 -- FLATMAP / SELECTMANY
 local flatMapFunc = function(context, index)
     local state = context[1]
@@ -301,7 +299,7 @@ local flatMapFunc = function(context, index)
     if state == 0 then
         nextContext = initialiseContext(context)
         state = setState(context, 3) -- signal to get (first) nested iterator
-        context[5] = 1 -- set position to 1
+        context[5] = 1               -- set position to 1
         context[6] = index
     end
 
@@ -333,7 +331,7 @@ local flatMapFunc = function(context, index)
                 context[7] = { getIterator(nestedObject) }
                 state = setState(context, 4)
             else
-            	-- iterator doesn't have any more nested iterators.
+                -- iterator doesn't have any more nested iterators.
                 state = setState(context, -4)
                 return nil, nil
             end
@@ -349,7 +347,6 @@ function Enumerator3:flatMap(selector)
     return Enumerator3.new(flatMapFunc, self.index, wrapContext2(self, selector, 0))
 end
 
-
 -- CONCAT
 local concatFunc = function(context, index)
     local state = context[1]
@@ -361,10 +358,10 @@ local concatFunc = function(context, index)
         return false
     end
 
-	if state == 0 then
+    if state == 0 then
         nextContext = { getIterator(nextFunc, nextContext, index) }
-		state = setState(context, 1)
-	end
+        state = setState(context, 1)
+    end
 
     while true do
         local current
@@ -389,10 +386,9 @@ end
 ---@param second table
 ---@return Enumerator3
 function Enumerator3:concat(second)
-	assert(second, 'Second cannot be nil')
+    assert(second, 'Second cannot be nil')
     return Enumerator3.new(concatFunc, self.index, wrapContext1(self, second))
 end
-
 
 -- APPEND
 local appendFunc = function(context, index)
@@ -494,11 +490,10 @@ end
 
 ---Returns unique (distinct) elements from a sequence according to a specified key selector function.
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3 
+---@return Enumerator3
 function Enumerator3:unique(keySelector)
     return Enumerator3.new(uniqueFunc, self.index, wrapContext1(self, keySelector))
 end
-
 
 -- DIFFERENCE
 local differenceFunc = function(context, key)
@@ -538,16 +533,15 @@ end
 ---Produces the set difference of two sequences according to a specified key selector function.
 ---@param second table
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3 
+---@return Enumerator3
 function Enumerator3:difference(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
     return Enumerator3.new(differenceFunc, self.index, wrapContext2(self, second, keySelector))
 end
 
-
 -- UNION
-local unionFunc = function (context, key)
+local unionFunc = function(context, key)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
@@ -580,7 +574,7 @@ local unionFunc = function (context, key)
             end
         end
 
-        -- If the state is 2 at this point, the second iterator has 
+        -- If the state is 2 at this point, the second iterator has
         -- already been initialised and exhausted.
         if state == 2 then
             setState(context, -4)
@@ -648,7 +642,6 @@ function Enumerator3:intersect(second, keySelector)
     return Enumerator3.new(intersectFunc, self.index, wrapContext2(self, second, keySelector))
 end
 
-
 -- ZIP
 local zipFunc = function(context, index)
     local state = context[1]
@@ -690,7 +683,6 @@ function Enumerator3:zip(second, resultSelector)
 
     return Enumerator3.new(zipFunc, self.index, wrapContext2(self, second, resultSelector))
 end
-
 
 -- GROUPBY / GROUPBYRESULT
 local groupByFunc = function(context, index)
@@ -779,21 +771,21 @@ local getSortFunction = function(sortSelectors)
 
     -- Return chained sorting.
     return function(a, b)
-		for _, sortSelector in pairs(sortSelectors) do
-			local selector = sortSelector[2]
-			local sortAscending = sortSelector[1]
+        for _, sortSelector in pairs(sortSelectors) do
+            local selector = sortSelector[2]
+            local sortAscending = sortSelector[1]
 
-			local leftVal = selector(a)
-			local rightVal = selector(b)
-			if leftVal ~= rightVal then
-				if sortAscending then
-					return leftVal < rightVal
-				else
-					return leftVal > rightVal
-				end
-			end
-		end
-	end
+            local leftVal = selector(a)
+            local rightVal = selector(b)
+            if leftVal ~= rightVal then
+                if sortAscending then
+                    return leftVal < rightVal
+                else
+                    return leftVal > rightVal
+                end
+            end
+        end
+    end
 end
 
 local sortFunc = function(context, index)
@@ -1137,7 +1129,7 @@ function Enumerator3.any(self, predicate)
             local inx, _ = nextFunc(context, index)
             return inx ~= nil
         end
-    -- Check with a predicate. We need one item that matches the predicate.
+        -- Check with a predicate. We need one item that matches the predicate.
     else
         for key, value in nextFunc, context, index do
             if predicate(value, key) == true then
@@ -1238,7 +1230,6 @@ end
 local minmax = function(self, comparison)
     local nextFunc, context, index = getIterator(self)
 
-    -- Grab the first item
     local key, value = nextFunc(context, index)
     local maxVal = value
 
@@ -1251,45 +1242,44 @@ local minmax = function(self, comparison)
     return maxVal
 end
 
----Returns the maximum value in a sequence of values.
+---Returns the maximum value, or the item with the maximum selected value.
 ---@param self Enumerator3
----@return number
-function Enumerator3.max(self)
-    return minmax(self, maxCmp)
+---@param selector? fun(item: any, key: any): number
+---@return any
+function Enumerator3.max(self, selector)
+    if selector ~= nil then
+        return minmaxBy(self, selector, maxCmp)
+    else
+        return minmax(self, maxCmp)
+    end
 end
 
----Returns the item with the highest value in a sequence.
+---Returns the minimum value, or the item with the minimum selected value.
 ---@param self Enumerator3
----@param selector fun(item: any, key: any): number
----@return unknown
-function Enumerator3.maxBy(self, selector)
-    assert(selector)
-    return minmaxBy(self, selector, maxCmp)
-end
-
----Returns the minimum value in a sequence of values.
----@param self Enumerator3
----@return number
-function Enumerator3.min(self)
-    return minmax(self, minCmp)
-end
-
----Returns the item with the lowest value in a sequence.
----@param self Enumerator3
----@param selector fun(item: any, key: any): number
----@return unknown
-function Enumerator3.minBy(self, selector)
-    assert(selector)
-    return minmaxBy(self, selector, minCmp)
+---@param selector? fun(item: any, key: any): number
+---@return any
+function Enumerator3.min(self, selector)
+    if selector ~= nil then
+        return minmaxBy(self, selector, minCmp)
+    else
+        return minmax(self, minCmp)
+    end
 end
 
 ---Returns the sum value of a sequence of values.
 ---@param self Enumerator3
+---@param selector? fun(value: any, key: any): number
 ---@return number
-function Enumerator3.sum(self)
+function Enumerator3.sum(self, selector)
     local total = 0
-    for _, v in getIterator(self) do
-        total = total + v
+    if selector == nil then
+        for _, value in getIterator(self) do
+            total = total + value
+        end
+    else
+        for key, value in getIterator(self) do
+            total = total + selector(value, key)
+        end
     end
     return total
 end

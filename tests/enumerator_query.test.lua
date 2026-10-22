@@ -224,9 +224,9 @@ test("max", function()
     assertEqual(maximum, 8)
 end)
 
-test("maxBy", function()
+test("max with selector returns the matching item", function()
     local values = { { score = 2 }, { score = 9 }, { score = 4 } }
-    local maximum = Enumerator3.create(values):maxBy(function(item) return item.score end)
+    local maximum = Enumerator3.create(values):max(function(item) return item.score end)
 
     assertEqual(maximum, values[2])
 end)
@@ -238,9 +238,9 @@ test("min", function()
     assertEqual(minimum, 2)
 end)
 
-test("minBy", function()
+test("min with selector returns the matching item", function()
     local values = { { score = 2 }, { score = 9 }, { score = 4 } }
-    local minimum = Enumerator3.create(values):minBy(function(item) return item.score end)
+    local minimum = Enumerator3.create(values):min(function(item) return item.score end)
 
     assertEqual(minimum, values[1])
 end)
@@ -248,6 +248,17 @@ end)
 test("sum", function()
     local values = Enumerator3.create({ 2, 3, 4 })
     local sum = values:sum()
+
+    assertEqual(sum, 9)
+end)
+
+test("sum with selector", function()
+    local values = Enumerator3.create({
+        { score = 2 },
+        { score = 3 },
+        { score = 4 },
+    })
+    local sum = values:sum(function(item) return item.score end)
 
     assertEqual(sum, 9)
 end)
