@@ -7,116 +7,240 @@ local assertSequence = assert.sequenceEquals
 local test = require("tests.test")
 
 
-test("indexOf", function()
-    assertEqual(Enumerator3.indexOf({ 3, 5, 7 }, 5), 2)
-    assertEqual(Enumerator3.indexOf({ 3, 5, 7 }, 9), -1)
+test("indexOf finds an item", function()
+    local values = Enumerator3.create({ 3, 5, 7 })
+    assertEqual(values:indexOf(5), 2)
 end)
 
-test("contains", function()
-    assertEqual(Enumerator3.contains({ 3, 5, 7 }, 5), true)
-    assertEqual(Enumerator3.contains({ 3, 5, 7 }, 9), false)
+test("indexOf returns -1 when the item is missing", function()
+    local values = Enumerator3.create({ 3, 5, 7 })
+    assertEqual(values:indexOf(9), -1)
 end)
 
-test("sequenceEquals", function()
-    assertEqual(Enumerator3.sequenceEquals({ 1, 2 }, { 1, 2 }), true)
-    assertEqual(Enumerator3.sequenceEquals({ 1, 2 }, { 1, 3 }), false)
-    assertEqual(Enumerator3.sequenceEquals({ 1, 2 }, { 1, 2, 3 }), false)
+test("indexOf uses a comparer", function()
+    local values = Enumerator3.create({ { id = 3 }, { id = 5 }, { id = 7 } })
+    local index = values:indexOf({ id = 5 }, function(left, right)
+        return left.id == right.id
+    end)
+
+    assertEqual(index, 2)
 end)
 
-test("firstOrDefault", function()
-    assertEqual(Enumerator3.firstOrDefault({ 1, 2, 3 }), 1)
-    assertEqual(Enumerator3.firstOrDefault({ 1, 2, 3 },
-        function(value) return value > 1 end), 2)
-    assertEqual(Enumerator3.firstOrDefault({}, nil, "empty"), "empty")
+test("contains finds an item", function()
+    local values = Enumerator3.create({ 3, 5, 7 })
+    assertEqual(values:contains(5), true)
 end)
 
-test("first", function()
-    assertEqual(Enumerator3.first({ 1, 2, 3 }), 1)
-    assertEqual(Enumerator3.first({ 1, 2, 3 },
-        function(value) return value > 1 end), 2)
+test("contains returns false when the item is missing", function()
+    local values = Enumerator3.create({ 3, 5, 7 })
+    assertEqual(values:contains(9), false)
 end)
 
-test("lastOrDefault", function()
-    assertEqual(Enumerator3.lastOrDefault({ 1, 2, 3 }), 3)
-    assertEqual(Enumerator3.lastOrDefault({ 1, 2, 3 },
-        function(value) return value < 3 end), 2)
-    assertEqual(Enumerator3.lastOrDefault({}, nil, "empty"), "empty")
+test("contains uses a comparer", function()
+    local values = Enumerator3.create({ { id = 3 }, { id = 5 }, { id = 7 } })
+    local contains = values:contains({ id = 5 }, function(left, right)
+        return left.id == right.id
+    end)
+
+    assertEqual(contains, true)
 end)
 
-test("last", function()
-    assertEqual(Enumerator3.last({ 1, 2, 3 }), 3)
-    assertEqual(Enumerator3.last({ 1, 2, 3 },
-        function(value) return value < 3 end), 2)
+test("sequenceEquals returns true for equal sequences", function()
+    local values = Enumerator3.create({ 1, 2 })
+    assertEqual(values:sequenceEquals({ 1, 2 }), true)
 end)
 
-test("count", function()
-    assertEqual(Enumerator3.count({ 1, 2, 3 }), 3)
-    assertEqual(Enumerator3.count({}), 0)
+test("sequenceEquals returns false for different values", function()
+    local values = Enumerator3.create({ 1, 2 })
+    assertEqual(values:sequenceEquals({ 1, 3 }), false)
 end)
 
-test("countBy", function()
-    assertEqual(Enumerator3.countBy({ 1, 2, 3, 4 },
-        function(value) return value % 2 == 0 end), 2)
+test("sequenceEquals returns false for different lengths", function()
+    local values = Enumerator3.create({ 1, 2 })
+    assertEqual(values:sequenceEquals({ 1, 2, 3 }), false)
 end)
 
-test("all", function()
-    assertEqual(Enumerator3.all({ 2, 4, 6 }, function(value) return value % 2 == 0 end), true)
-    assertEqual(Enumerator3.all({ 2, 3, 6 }, function(value) return value % 2 == 0 end), false)
+test("sequenceEquals uses a comparer", function()
+    local values = Enumerator3.create({ { id = 1 }, { id = 2 } })
+    local equalsById = values:sequenceEquals({ { id = 1 }, { id = 2 } }, function(left, right)
+        return left.id == right.id
+    end)
+
+    assertEqual(equalsById, true)
 end)
 
-test("any", function()
-    assertEqual(Enumerator3.any({ 1, 2, 3 }), true)
-    assertEqual(Enumerator3.any({}), false)
-    assertEqual(Enumerator3.any({ 1, 2, 3 }, function(value) return value == 2 end), true)
+test("firstOrDefault returns the first value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:firstOrDefault(), 1)
+end)
+
+test("firstOrDefault returns the first matching value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:firstOrDefault(function(value) return value > 1 end), 2)
+end)
+
+test("firstOrDefault returns the default for an empty sequence", function()
+    local values = Enumerator3.create({})
+    assertEqual(values:firstOrDefault(nil, "default value"), "default value")
+end)
+
+test("first returns the first value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:first(), 1)
+end)
+
+test("first returns the first matching value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:first(function(value) return value > 1 end), 2)
+end)
+
+test("first errors when no value matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    local succeeded = pcall(function()
+        values:first(function(value) return value > 3 end)
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("lastOrDefault returns the last value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:lastOrDefault(), 3)
+end)
+
+test("lastOrDefault returns the last matching value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:lastOrDefault(function(value) return value < 3 end), 2)
+end)
+
+test("lastOrDefault returns the default for an empty sequence", function()
+    local values = Enumerator3.create({})
+    assertEqual(values:lastOrDefault(nil, "default value"), "default value")
+end)
+
+test("last returns the last value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:last(), 3)
+end)
+
+test("last returns the last matching value", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:last(function(value) return value < 3 end), 2)
+end)
+
+test("last errors when no value matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    local succeeded = pcall(function()
+        values:last(function(value) return value > 3 end)
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("count returns the number of values", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:count(), 3)
+end)
+
+test("count returns zero for an empty sequence", function()
+    local values = Enumerator3.create({})
+    assertEqual(values:count(), 0)
+end)
+
+test("countBy counts matching values", function()
+    local values = Enumerator3.create({ 1, 2, 3, 4 })
+    assertEqual(values:countBy(function(value) return value % 2 == 0 end), 2)
+end)
+
+test("all returns true when every value matches", function()
+    local values = Enumerator3.create({ 2, 4, 6 })
+    assertEqual(values:all(function(value) return value % 2 == 0 end), true)
+end)
+
+test("all returns false when a value does not match", function()
+    local values = Enumerator3.create({ 2, 3, 6 })
+    assertEqual(values:all(function(value) return value % 2 == 0 end), false)
+end)
+
+test("any returns true for a non-empty sequence", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:any(), true)
+end)
+
+test("any returns false for an empty sequence", function()
+    local values = Enumerator3.create({})
+    assertEqual(values:any(), false)
+end)
+
+test("any returns true when a value matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:any(function(value) return value == 2 end), true)
 end)
 
 test("foreach", function()
     local total = 0
-    Enumerator3.foreach({ 1, 2, 3 }, function(value) total = total + value end)
+    local values = Enumerator3.create({ 1, 2, 3 })
+    values:foreach(function(value) total = total + value end)
+
     assertEqual(total, 6)
 end)
 
 test("ipairs", function()
-    local values = {}
-    for index, value in Enumerator3.ipairs(Enumerator3.create({ 4, 5 })) do
-        values[index] = value
-    end
-    assertSequence(values, { 4, 5 })
+    local values = Enumerator3.create({ 4, 5 })
+    local iteratedValues = Enumerator3.createFrom(values, function(source)
+        return source:ipairs()
+    end)
+
+    assertSequence(iteratedValues, { 4, 5 })
 end)
 
 test("pairs", function()
-    local values = {}
-    for key, value in Enumerator3.pairs(Enumerator3.create({ 4, 5 })) do
-        values[key] = value
-    end
-    assertEqual(values[1], 4)
-    assertEqual(values[2], 5)
+    local values = Enumerator3.create({ 4, 5 })
+    local iteratedValues = Enumerator3.createFrom(values, function(source)
+        return source:pairs()
+    end)
+
+    assertSequence(iteratedValues, { 4, 5 })
 end)
 
 test("aggregate", function()
-    local result = Enumerator3.aggregate({ 2, 3, 4 },
-        function(total, value) return total + value end, 1)
+    local values = Enumerator3.create({ 2, 3, 4 })
+    local result = values:aggregate(function(total, value) return total + value end, 1)
+
     assertEqual(result, 10)
 end)
 
 test("max", function()
-    assertEqual(Enumerator3.max({ 2, 8, 4 }), 8)
+    local values = Enumerator3.create({ 2, 8, 4 })
+    local maximum = values:max()
+
+    assertEqual(maximum, 8)
 end)
 
 test("maxBy", function()
     local values = { { score = 2 }, { score = 9 }, { score = 4 } }
-    assertEqual(Enumerator3.maxBy(values, function(item) return item.score end), values[2])
+    local maximum = Enumerator3.create(values):maxBy(function(item) return item.score end)
+
+    assertEqual(maximum, values[2])
 end)
 
 test("min", function()
-    assertEqual(Enumerator3.min({ 2, 8, 4 }), 2)
+    local values = Enumerator3.create({ 2, 8, 4 })
+    local minimum = values:min()
+
+    assertEqual(minimum, 2)
 end)
 
 test("minBy", function()
     local values = { { score = 2 }, { score = 9 }, { score = 4 } }
-    assertEqual(Enumerator3.minBy(values, function(item) return item.score end), values[1])
+    local minimum = Enumerator3.create(values):minBy(function(item) return item.score end)
+
+    assertEqual(minimum, values[1])
 end)
 
 test("sum", function()
-    assertEqual(Enumerator3.sum({ 2, 3, 4 }), 9)
+    local values = Enumerator3.create({ 2, 3, 4 })
+    local sum = values:sum()
+
+    assertEqual(sum, 9)
 end)
