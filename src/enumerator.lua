@@ -215,6 +215,7 @@ local whereFunc = function(context, index)
     end
 
     local predicate = context[4]
+    local position = context[5]
     local current
 
     while true do
@@ -223,18 +224,21 @@ local whereFunc = function(context, index)
             setState(context, -4)
             return nil, nil
         end
-        if predicate(current, index) == true then
+
+        position = position + 1
+        context[5] = position
+        if predicate(current, position) == true then
             return index, current
         end
     end
 end
 
 ---Filters a sequence of values based on a predicate.
----@param predicate fun(item: any, index: any): boolean
+---@param predicate fun(item: any, index?: integer): boolean
 ---@return Enumerator3
 function Enumerator3:where(predicate)
     assert(predicate, 'Predicate cannot be nil')
-    return Enumerator3.new(whereFunc, self.index, wrapContext1(self, predicate))
+    return Enumerator3.new(whereFunc, self.index, wrapContext2(self, predicate, 0))
 end
 
 
@@ -270,7 +274,7 @@ local mapFunc = function(context, index)
 end
 
 ---Projects each element of a sequence into a new form.
----@param selector fun(item: any, position: integer): any
+---@param selector fun(item: any, index?: integer): any
 ---@return Enumerator3
 function Enumerator3:map(selector)
     assert(selector, 'Selector cannot be nil')
@@ -338,7 +342,7 @@ local flatMapFunc = function(context, index)
 end
 
 ---Projects each element of a sequence and flattens the resulting sequences into one sequence.
----@param selector fun(item: any, position: integer): table
+---@param selector fun(item: any, index?: integer): table
 ---@return Enumerator3
 function Enumerator3:flatMap(selector)
     assert(selector, 'Selector cannot be nil')

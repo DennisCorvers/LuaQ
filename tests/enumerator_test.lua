@@ -35,16 +35,65 @@ test("where", function()
     assertSequence(values, { 2, 4 })
 end)
 
+test("where with index", function()
+    local values = Enumerator3.create({ 0, 30, 20, 15, 90, 85, 40, 75 })
+        :where(function(value, index) return value <= index * 10 end)
+    assertSequence(values, { 0, 20, 15, 40, 75 })
+end)
+
 test("map", function()
-    local values = Enumerator3.create({ 2, 3 })
-        :map(function(value, position) return value * position end)
-    assertSequence(values, { 2, 6 })
+    local values = Enumerator3.create({ 1, 2, 3, 4 })
+        :map(function(value) return value * value end)
+    assertSequence(values, { 1, 4, 9, 16 })
+end)
+
+test("map with index", function()
+    local values = Enumerator3.create({ 1, 3, 5, 7 })
+        :map(function(value, index) return value * index end)
+    assertSequence(values, { 1, 6, 15, 28 })
 end)
 
 test("flatMap", function()
-    local values = Enumerator3.create({ 2, 3 })
-        :flatMap(function(value) return { value, value * 10 } end)
-    assertSequence(values, { 2, 20, 3, 30 })
+    local values = Enumerator3.create({
+        {
+            name = "Ada",
+            skills = {
+                { name = "Magic", level = 80 },
+                { name = "Runecrafting", level = 65 },
+            },
+        },
+        {
+            name = "Bryn",
+            skills = {
+                { name = "Mining", level = 72 },
+            },
+        },
+    }):flatMap(function(player) return player.skills end)
+    assertSequence(values:map(function(skill) return skill.name end), {
+        "Magic",
+        "Runecrafting",
+        "Mining",
+    })
+end)
+
+test("flatMap with index", function()
+    local values = Enumerator3.create({
+        { name = "Ada", skills = { "Magic", "Runecrafting" } },
+        { name = "Bryn", skills = { "Mining", "Smithing" } },
+    }):flatMap(function(player, index)
+        return {
+            { player = player.name, skill = player.skills[1], playerIndex = index },
+            { player = player.name, skill = player.skills[2], playerIndex = index },
+        }
+    end):map(function(skill)
+        return skill.player .. ":" .. skill.skill .. ":" .. skill.playerIndex
+    end)
+    assertSequence(values, {
+        "Ada:Magic:1",
+        "Ada:Runecrafting:1",
+        "Bryn:Mining:2",
+        "Bryn:Smithing:2",
+    })
 end)
 
 test("concat", function()
@@ -98,8 +147,8 @@ end)
 test("groupBy", function()
     local groups = {}
     for key, values in Enumerator3.create({ 1, 2, 3, 4 })
-        :groupBy(function(value) return value % 2 == 0 and "even" or "odd" end)
-        :pairs() do
+    :groupBy(function(value) return value % 2 == 0 and "even" or "odd" end)
+    :pairs() do
         groups[key] = values
     end
     assertSequence(groups.even, { 2, 4 })
@@ -109,12 +158,12 @@ end)
 test("groupByResult", function()
     local totals = {}
     for key, total in Enumerator3.create({ 1, 2, 3, 4 })
-        :groupByResult(
-            function(value) return value % 2 == 0 and "even" or "odd" end,
-            function(value) return value end,
-            function(_, values) return Enumerator3.sum(values) end
-        )
-        :pairs() do
+    :groupByResult(
+        function(value) return value % 2 == 0 and "even" or "odd" end,
+        function(value) return value end,
+        function(_, values) return Enumerator3.sum(values) end
+    )
+    :pairs() do
         totals[key] = total
     end
     assertEqual(totals.even, 6)
@@ -149,10 +198,10 @@ end)
 
 test("thenBy", function()
     local values = Enumerator3.create({
-        { group = 1, name = "b" },
-        { group = 1, name = "a" },
-        { group = 2, name = "c" },
-    }):sortBy(function(item) return item.group end)
+            { group = 1, name = "b" },
+            { group = 1, name = "a" },
+            { group = 2, name = "c" },
+        }):sortBy(function(item) return item.group end)
         :thenBy(function(item) return item.name end)
         :map(function(item) return item.name end)
     assertSequence(values, { "a", "b", "c" })
@@ -160,10 +209,10 @@ end)
 
 test("thenByDecending", function()
     local values = Enumerator3.create({
-        { group = 1, score = 2 },
-        { group = 1, score = 3 },
-        { group = 2, score = 1 },
-    }):sortBy(function(item) return item.group end)
+            { group = 1, score = 2 },
+            { group = 1, score = 3 },
+            { group = 2, score = 1 },
+        }):sortBy(function(item) return item.group end)
         :thenByDecending(function(item) return item.score end)
         :map(function(item) return item.score end)
     assertSequence(values, { 3, 2, 1 })
