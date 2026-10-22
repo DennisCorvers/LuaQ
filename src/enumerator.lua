@@ -437,27 +437,6 @@ local appendFunc = function(context, index)
     return nil, nil
 end
 
----Appends a value to the end of the sequence.
----@param item any
----@param index? any
----@return Enumerator3
-function Enumerator3:append(item, index)
-    if index == nil then index = 'nil' end -- Index needs *some* value
-
-    return Enumerator3.new(appendFunc, self.index, wrapContextN(self, item, index, true))
-end
-
----Prepends a value to the start of the sequence.
----@param item any
----@param index? any
----@return Enumerator3
-function Enumerator3:prepend(item, index)
-    if index == nil then index = 'nil' end -- Index needs *some* value
-
-    return Enumerator3.new(appendFunc, self.index, wrapContextN(self, item, index, false))
-end
-
-
 -- UNIQUE / DISTINCT
 local uniqueFunc = function(context, index)
     local state = context[1]
