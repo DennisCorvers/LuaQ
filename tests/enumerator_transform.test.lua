@@ -115,10 +115,32 @@ test("unique", function()
     assertSequence(values, { 1, 2, 3 })
 end)
 
+test("unique with key selector", function()
+    local values = Enumerator3.create({
+        { id = 1, name = "first" },
+        { id = 1, name = "duplicate" },
+        { id = 2, name = "second" },
+    }):unique(function(value) return value.id end)
+        :map(function(value) return value.name end)
+    assertSequence(values, { "first", "second" })
+end)
+
 test("difference", function()
     local values = Enumerator3.create({ 1, 2, 2, 3 })
         :difference({ 2 })
     assertSequence(values, { 1, 3 })
+end)
+
+test("difference with key selector", function()
+    local values = Enumerator3.create({
+        { id = 1, name = "keep" },
+        { id = 2, name = "remove" },
+        { id = 3, name = "also keep" },
+    }):difference({
+        { id = 2, name = "matching id" },
+    }, function(value) return value.id end)
+        :map(function(value) return value.name end)
+    assertSequence(values, { "keep", "also keep" })
 end)
 
 test("union", function()
@@ -127,10 +149,36 @@ test("union", function()
     assertSequence(values, { 1, 2, 3 })
 end)
 
+test("union with key selector", function()
+    local values = Enumerator3.create({
+        { id = 1, name = "first" },
+        { id = 2, name = "second" },
+    }):union({
+        { id = 2, name = "duplicate second" },
+        { id = 3, name = "third" },
+    }, function(value) return value.id end)
+        :map(function(value) return value.name end)
+    assertSequence(values, { "first", "second", "third" })
+end)
+
 test("intersect", function()
     local values = Enumerator3.create({ 1, 2, 2, 3 })
         :intersect({ 2, 2, 3 })
     assertSequence(values, { 2, 3 })
+end)
+
+test("intersect with key selector", function()
+    local values = Enumerator3.create({
+        { id = 1, name = "exclude" },
+        { id = 2, name = "include second" },
+        { id = 2, name = "duplicate second" },
+        { id = 3, name = "include third" },
+    }):intersect({
+        { id = 2, name = "matching second" },
+        { id = 3, name = "matching third" },
+    }, function(value) return value.id end)
+        :map(function(value) return value.name end)
+    assertSequence(values, { "include second", "include third" })
 end)
 
 test("zip", function()

@@ -438,7 +438,7 @@ local appendFunc = function(context, index)
 end
 
 -- UNIQUE / DISTINCT
-local uniqueFunc = function(context, index)
+local uniqueFunc = function(context, key)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
@@ -454,10 +454,10 @@ local uniqueFunc = function(context, index)
         nextContext = initialiseContext(context)
         -- If we have any items, create a hashtable. Otherwise abort.
         -- We check this by moving to the next item in the iterator and checking
-        -- if it's not nil. We then set the state to 1 which immediately uses the current/index
+        -- if it's not nil. We then set the state to 1 which immediately uses the current key
         -- without having to move to a new item.
-        index, current = nextFunc(nextContext, index)
-        if index ~= nil then
+        key, current = nextFunc(nextContext, key)
+        if key ~= nil then
             context[5] = {}
             state = 1
         else
@@ -472,8 +472,8 @@ local uniqueFunc = function(context, index)
     while true do
         -- Try to grab a new item.
         if state == 2 then
-            index, current = nextFunc(nextContext, index)
-            if index ~= nil then
+            key, current = nextFunc(nextContext, key)
+            if key ~= nil then
                 state = 1
             else
                 setState(context, -4)
@@ -483,17 +483,17 @@ local uniqueFunc = function(context, index)
 
         if state == 1 then
             state = 2
-            local key = keySelector and keySelector(current, index) or current
-            if addToSet(set, key) == true then
+            local selectedKey = keySelector and keySelector(current, key) or current
+            if addToSet(set, selectedKey) == true then
                 setState(context, state)
-                return index, current
+                return key, current
             end
         end
     end
 end
 
 ---Returns unique (distinct) elements from a sequence according to a specified key selector function.
----@param keySelector? fun(current: any, index: any): any
+---@param keySelector? fun(value: any, key: any): any
 ---@return Enumerator3 
 function Enumerator3:unique(keySelector)
     return Enumerator3.new(uniqueFunc, self.index, wrapContext1(self, keySelector))
@@ -501,7 +501,7 @@ end
 
 
 -- DIFFERENCE
-local differenceFunc = function(context, index)
+local differenceFunc = function(context, key)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
@@ -522,11 +522,11 @@ local differenceFunc = function(context, index)
 
     local set = context[6]
     while true do
-        index, current = nextFunc(nextContext, index)
-        if index ~= nil then
-            local key = keySelector and keySelector(current, index) or current
-            if addToSet(set, key) == true then
-                return index, current
+        key, current = nextFunc(nextContext, key)
+        if key ~= nil then
+            local selectedKey = keySelector and keySelector(current, key) or current
+            if addToSet(set, selectedKey) == true then
+                return key, current
             end
         else
             setState(context, -4)
@@ -537,7 +537,7 @@ end
 
 ---Produces the set difference of two sequences according to a specified key selector function.
 ---@param second table
----@param keySelector? fun(current: any, index: any): any
+---@param keySelector? fun(value: any, key: any): any
 ---@return Enumerator3 
 function Enumerator3:difference(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
@@ -547,7 +547,7 @@ end
 
 
 -- UNION
-local unionFunc = function (context, index)
+local unionFunc = function (context, key)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
@@ -561,7 +561,7 @@ local unionFunc = function (context, index)
             return nil, nil
         end
     else
-        nextContext = { getIterator(nextFunc, nextContext, index) }
+        nextContext = { getIterator(nextFunc, nextContext, key) }
         context[3] = nextContext
         context[6] = {}
         state = setState(context, 1)
@@ -571,12 +571,12 @@ local unionFunc = function (context, index)
     while state > 0 do
         -- Iteration state (exhaust the current iterator)
         while true do
-            index, current = moveIterator(nextContext)
-            if index == nil then break end
+            key, current = moveIterator(nextContext)
+            if key == nil then break end
 
-            local key = keySelector and keySelector(current, index) or current
-            if addToSet(set, key) == true then
-                return index, current
+            local selectedKey = keySelector and keySelector(current, key) or current
+            if addToSet(set, selectedKey) == true then
+                return key, current
             end
         end
 
@@ -596,7 +596,7 @@ end
 
 ---Produces the set union of two sequences according to a specified key selector function.
 ---@param second table
----@param keySelector? fun(current: any, index: any): any
+---@param keySelector? fun(value: any, key: any): any
 ---@return Enumerator3
 function Enumerator3:union(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
@@ -605,7 +605,7 @@ function Enumerator3:union(second, keySelector)
 end
 
 -- INTERSECT
-local intersectFunc = function(context, index)
+local intersectFunc = function(context, key)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
@@ -626,22 +626,22 @@ local intersectFunc = function(context, index)
 
     local set = context[6]
     while true do
-        index, current = nextFunc(nextContext, index)
-        if index == nil then
+        key, current = nextFunc(nextContext, key)
+        if key == nil then
             setState(context, -4)
             return nil, nil
         end
 
-        local key = keySelector and keySelector(current, index) or current
-        if removeFromSet(set, key) == true then
-            return index, current
+        local selectedKey = keySelector and keySelector(current, key) or current
+        if removeFromSet(set, selectedKey) == true then
+            return key, current
         end
     end
 end
 
 ---Produces the set intersection of two sequences according to a specified key selector function.
 ---@param second table
----@param keySelector? fun(current: any, index: any): any
+---@param keySelector? fun(value: any, key: any): any
 function Enumerator3:intersect(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
@@ -1092,7 +1092,7 @@ end
 
 --- Determines whether all elements of a sequence satisfy a condition.
 ---@param self Enumerator3
----@param predicate fun(current: any, index: any): boolean
+---@param predicate fun(current: any, key: any): boolean
 ---@return boolean
 function Enumerator3.all(self, predicate)
     assert(predicate)
@@ -1106,7 +1106,7 @@ end
 
 ---Determines whether any element of a sequence exists or satisfies a condition.
 ---@param self Enumerator3
----@param predicate? fun(current: any, index: any): boolean
+---@param predicate? fun(current: any, key: any): boolean
 ---@return boolean
 function Enumerator3.any(self, predicate)
     local nextFunc, context, index = getIterator(self)
@@ -1243,7 +1243,7 @@ end
 
 ---Returns the item with the highest value in a sequence.
 ---@param self Enumerator3
----@param selector fun(item: any, index: any): number
+---@param selector fun(item: any, key: any): number
 ---@return unknown
 function Enumerator3.maxBy(self, selector)
     assert(selector)
@@ -1259,7 +1259,7 @@ end
 
 ---Returns the item with the lowest value in a sequence.
 ---@param self Enumerator3
----@param selector fun(item: any, index: any): number
+---@param selector fun(item: any, key: any): number
 ---@return unknown
 function Enumerator3.minBy(self, selector)
     assert(selector)
@@ -1283,16 +1283,16 @@ end
 
 ---Creates a set from a table|Enumerator3 with a specified key for uniqueness.
 ---@param self table
----@param keySelector? fun(current:any, index: any): any
+---@param keySelector? fun(value: any, key: any): any
 ---@return table
 function Enumerator3.toSet(self, keySelector)
     local set = {}
-    for inx, current in getIterator(self) do
+    for key, current in getIterator(self) do
         if keySelector == nil then
             set[current] = true
         else
-            local key = keySelector(current, inx)
-            set[key] = true
+            local selectedKey = keySelector(current, key)
+            set[selectedKey] = true
         end
     end
     return set
@@ -1309,27 +1309,29 @@ function Enumerator3.toTable(self)
     return tab
 end
 
----Creates a lookup from a table|Enumerator3
----This is a { key, { elements } } structure
+---Creates a lookup from a table|Enumerator3.
+---The selectors receive each value and its source key.
 ---@param self table
+---@param keySelector fun(value: any, key: any): any
+---@param elementSelector? fun(value: any, key: any): any
 ---@return table
 function Enumerator3.toLookup(self, keySelector, elementSelector)
     local lookup = {}
 
-    for inx, value in getIterator(self) do
+    for key, value in getIterator(self) do
         -- Retrieve grouping by key
-        local key = keySelector(value, inx)
-        assert(key, 'Key cannot be nil.')
-        local grouping = lookup[key]
+        local selectedKey = keySelector(value, key)
+        assert(selectedKey, 'Key cannot be nil.')
+        local grouping = lookup[selectedKey]
 
         -- Create new grouping if it doesn't exist.
         if grouping == nil then
             grouping = {}
-            lookup[key] = grouping
+            lookup[selectedKey] = grouping
         end
 
         -- Add element to grouping
-        local element = elementSelector and elementSelector(value, inx) or value
+        local element = elementSelector and elementSelector(value, key) or value
         table.insert(grouping, element)
     end
 
