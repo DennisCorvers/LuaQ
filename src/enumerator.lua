@@ -741,6 +741,11 @@ function Enumerator3:groupBy(keySelector, elementSelector)
     return Enumerator3.new(groupByFunc, self.index, wrapContext2(self, keySelector, elementSelector))
 end
 
+---Groups the elements of a sequence and transforms each group into a result.
+---@param keySelector fun(value: any): any
+---@param elementSelector? fun(value: any): any
+---@param resultSelector fun(key: any, elements: table): any
+---@return Enumerator3
 function Enumerator3:groupByResult(keySelector, elementSelector, resultSelector)
     assert(keySelector, 'Key Selector cannot be nil.')
     assert(resultSelector, 'Result Selctor cannot be nil.')
@@ -855,26 +860,42 @@ local function getChainedSorter(self, isDecending, selector)
     return self
 end
 
+---Sorts the sequence in ascending order by its values.
+---@return Enumerator3
 function Enumerator3:sort()
     return getSorter(self, true)
 end
 
+---Sorts the sequence in descending order by its values.
+---@return Enumerator3
 function Enumerator3:sortDescending()
     return getSorter(self, false)
 end
 
+---Sorts the sequence in ascending order using a selector.
+---@param selector fun(value: any): any
+---@return Enumerator3
 function Enumerator3:sortBy(selector)
     return getSorter(self, true, selector)
 end
 
+---Sorts the sequence in descending order using a selector.
+---@param selector fun(value: any): any
+---@return Enumerator3
 function Enumerator3:sortByDescending(selector)
     return getSorter(self, false, selector)
 end
 
+---Adds an ascending sort criterion to the previous sort.
+---@param selector fun(value: any): any
+---@return Enumerator3
 function Enumerator3:thenBy(selector)
     return getChainedSorter(self, true, selector)
 end
 
+---Adds a descending sort criterion to the previous sort.
+---@param selector fun(value: any): any
+---@return Enumerator3
 function Enumerator3:thenByDecending(selector)
     return getChainedSorter(self, false, selector)
 end

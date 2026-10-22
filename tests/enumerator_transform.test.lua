@@ -58,7 +58,7 @@ test("flatMap", function()
         {
             name = "Ada",
             skills = {
-                { name = "Magic", level = 80 },
+                { name = "Magic",        level = 80 },
                 { name = "Runecrafting", level = 65 },
             },
         },
@@ -78,7 +78,7 @@ end)
 
 test("flatMap with index", function()
     local values = Enumerator3.create({
-        { name = "Ada", skills = { "Magic", "Runecrafting" } },
+        { name = "Ada",  skills = { "Magic", "Runecrafting" } },
         { name = "Bryn", skills = { "Mining", "Smithing" } },
     }):flatMap(function(player, index)
         return {
@@ -117,10 +117,10 @@ end)
 
 test("unique with key selector", function()
     local values = Enumerator3.create({
-        { id = 1, name = "first" },
-        { id = 1, name = "duplicate" },
-        { id = 2, name = "second" },
-    }):unique(function(value) return value.id end)
+            { id = 1, name = "first" },
+            { id = 1, name = "duplicate" },
+            { id = 2, name = "second" },
+        }):unique(function(value) return value.id end)
         :map(function(value) return value.name end)
     assertSequence(values, { "first", "second" })
 end)
@@ -133,12 +133,12 @@ end)
 
 test("difference with key selector", function()
     local values = Enumerator3.create({
-        { id = 1, name = "keep" },
-        { id = 2, name = "remove" },
-        { id = 3, name = "also keep" },
-    }):difference({
-        { id = 2, name = "matching id" },
-    }, function(value) return value.id end)
+            { id = 1, name = "keep" },
+            { id = 2, name = "remove" },
+            { id = 3, name = "also keep" },
+        }):difference({
+            { id = 2, name = "matching id" },
+        }, function(value) return value.id end)
         :map(function(value) return value.name end)
     assertSequence(values, { "keep", "also keep" })
 end)
@@ -151,12 +151,12 @@ end)
 
 test("union with key selector", function()
     local values = Enumerator3.create({
-        { id = 1, name = "first" },
-        { id = 2, name = "second" },
-    }):union({
-        { id = 2, name = "duplicate second" },
-        { id = 3, name = "third" },
-    }, function(value) return value.id end)
+            { id = 1, name = "first" },
+            { id = 2, name = "second" },
+        }):union({
+            { id = 2, name = "duplicate second" },
+            { id = 3, name = "third" },
+        }, function(value) return value.id end)
         :map(function(value) return value.name end)
     assertSequence(values, { "first", "second", "third" })
 end)
@@ -169,14 +169,14 @@ end)
 
 test("intersect with key selector", function()
     local values = Enumerator3.create({
-        { id = 1, name = "exclude" },
-        { id = 2, name = "include second" },
-        { id = 2, name = "duplicate second" },
-        { id = 3, name = "include third" },
-    }):intersect({
-        { id = 2, name = "matching second" },
-        { id = 3, name = "matching third" },
-    }, function(value) return value.id end)
+            { id = 1, name = "exclude" },
+            { id = 2, name = "include second" },
+            { id = 2, name = "duplicate second" },
+            { id = 3, name = "include third" },
+        }):intersect({
+            { id = 2, name = "matching second" },
+            { id = 3, name = "matching third" },
+        }, function(value) return value.id end)
         :map(function(value) return value.name end)
     assertSequence(values, { "include second", "include third" })
 end)
@@ -188,29 +188,57 @@ test("zip", function()
 end)
 
 test("groupBy", function()
-    local groups = {}
-    for key, values in Enumerator3.create({ 1, 2, 3, 4 })
-    :groupBy(function(value) return value % 2 == 0 and "even" or "odd" end)
-    :pairs() do
-        groups[key] = values
-    end
-    assertSequence(groups.even, { 2, 4 })
-    assertSequence(groups.odd, { 1, 3 })
+    local players = {
+        { name = "Ada",  role = "mage" },
+        { name = "Bryn", role = "ranger" },
+        { name = "Cato", role = "mage" },
+    }
+
+    local groups = Enumerator3.create(players)
+        :groupBy(function(player) return player.role end)
+        :toDictionary()
+
+    assertSequence(groups.mage, { players[1], players[3] })
+    assertSequence(groups.ranger, { players[2] })
+end)
+
+test("groupBy with element selector", function()
+    local players = {
+        { name = "Ada",  role = "mage" },
+        { name = "Bryn", role = "ranger" },
+        { name = "Cato", role = "mage" },
+    }
+
+    local namesByRole = Enumerator3.create(players)
+        :groupBy(
+            function(player) return player.role end,
+            function(player) return player.name end
+        )
+        :toDictionary()
+
+    assertSequence(namesByRole.mage, { "Ada", "Cato" })
+    assertSequence(namesByRole.ranger, { "Bryn" })
 end)
 
 test("groupByResult", function()
-    local totals = {}
-    for key, total in Enumerator3.create({ 1, 2, 3, 4 })
-    :groupByResult(
-        function(value) return value % 2 == 0 and "even" or "odd" end,
-        function(value) return value end,
-        function(_, values) return Enumerator3.sum(values) end
-    )
-    :pairs() do
-        totals[key] = total
-    end
-    assertEqual(totals.even, 6)
-    assertEqual(totals.odd, 4)
+    local players = {
+        { name = "Ada",  role = "mage",   score = 12 },
+        { name = "Bryn", role = "ranger", score = 8 },
+        { name = "Cato", role = "mage",   score = 15 },
+    }
+
+    local totals = Enumerator3.create(players)
+        :groupByResult(
+            function(player) return player.role end,
+            function(player) return player.score end,
+            function(role, scores)
+                return { role = role, totalScore = Enumerator3.sum(scores) }
+            end
+        )
+        :toDictionary()
+
+    assertEqual(totals.mage.totalScore, 27)
+    assertEqual(totals.ranger.totalScore, 8)
 end)
 
 test("sort", function()
