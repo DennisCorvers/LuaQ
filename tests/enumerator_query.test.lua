@@ -7,6 +7,92 @@ local assertSequence = assert.sequenceEquals
 local test = require("tests.test")
 
 
+test("elementAt uses a 1-based index", function()
+    local values = Enumerator3.create({ "first", "second", "third" })
+    assertEqual(values:elementAt(1), "first")
+end)
+
+test("elementAt returns an item at a later index", function()
+    local values = Enumerator3.create({ "first", "second", "third" })
+    assertEqual(values:elementAt(3), "third")
+end)
+
+test("elementAt supports custom iterators", function()
+    local source = { "first", "second", "third" }
+    local function nextValue(items, index)
+        index = index + 1
+        if items[index] ~= nil then
+            return index, items[index]
+        end
+    end
+    local values = Enumerator3.createFrom(source, function(items)
+        return nextValue, items, 0
+    end)
+
+    assertEqual(values:elementAt(2), "second")
+end)
+
+test("elementAt errors when the index is out of range", function()
+    local values = Enumerator3.create({ "first", "second" })
+    local succeeded = pcall(function()
+        values:elementAt(3)
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("elementAtOrDefault returns an item in range", function()
+    local values = Enumerator3.create({ "first", "second" })
+    assertEqual(values:elementAtOrDefault(2, "fallback"), "second")
+end)
+
+test("elementAtOrDefault returns the default out of range", function()
+    local values = Enumerator3.create({ "first", "second" })
+    assertEqual(values:elementAtOrDefault(3, "fallback"), "fallback")
+end)
+
+test("single returns the only item", function()
+    local values = Enumerator3.create({ "only" })
+    assertEqual(values:single(), "only")
+end)
+
+test("single returns the only matching item", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:single(function(value) return value == 2 end), 2)
+end)
+
+test("single errors when there are no matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    local succeeded = pcall(function()
+        values:single(function(value) return value > 3 end)
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("single errors when there are multiple matches", function()
+    local values = Enumerator3.create({ 2, 4, 6 })
+    local succeeded = pcall(function()
+        values:single(function(value) return value % 2 == 0 end)
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
+test("singleOrDefault returns the default when there are no matches", function()
+    local values = Enumerator3.create({ 1, 2, 3 })
+    assertEqual(values:singleOrDefault(function(value) return value > 3 end, "default"), "default")
+end)
+
+test("singleOrDefault errors when there are multiple matches", function()
+    local values = Enumerator3.create({ 2, 4, 6 })
+    local succeeded = pcall(function()
+        values:singleOrDefault(function(value) return value % 2 == 0 end, "default")
+    end)
+
+    assertEqual(succeeded, false)
+end)
+
 test("indexOf finds an item", function()
     local values = Enumerator3.create({ 3, 5, 7 })
     assertEqual(values:indexOf(5), 2)

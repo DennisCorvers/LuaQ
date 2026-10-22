@@ -1084,6 +1084,49 @@ end
 --------------------------------------------------------------------------------
 --#region Sequence search functions
 
+local function elementAt(self, index)
+    assert(type(index) == 'number' and index >= 1 and index % 1 == 0, 'Index must be a positive integer.')
+    local nextFunc, context, iteratorIndex = getIterator(self)
+    if nextFunc == ipairsFunc then
+        return context[index]
+    end
+
+    local position = 1
+    for _, value in nextFunc, context, iteratorIndex do
+        if position == index then
+            return value
+        end
+        position = position + 1
+    end
+
+    return nil
+end
+
+---Returns the element at the specified 1-based position.
+---@param self table
+---@param index integer
+---@return any
+function Enumerator3.elementAt(self, index)
+    local value = elementAt(self, index)
+    if value ~= nil then
+        return value
+    end
+    error('Index is outside the sequence bounds.')
+end
+
+---Returns the element at the specified 1-based position, or a default value.
+---@param self table
+---@param index integer
+---@param defaultValue? any
+---@return any
+function Enumerator3.elementAtOrDefault(self, index, defaultValue)
+    local value = elementAt(self, index)
+    if value ~= nil then
+        return value
+    end
+    return defaultValue
+end
+
 local function getFirstItem(self, defaultValue)
     local firstItem = nil
 
@@ -1181,6 +1224,48 @@ function Enumerator3.last(self, predicate)
     else
         return result
     end
+end
+
+local function getSingleItem(self, predicate, defaultValue)
+    local result = nil
+    local found = false
+
+    for key, value in getIterator(self) do
+        if predicate == nil or predicate(value, key) == true then
+            if found then
+                error('Sequence contains more than one (matching) element.')
+            end
+            result = value
+            found = true
+        end
+    end
+
+    if found then
+        return result
+    end
+    return defaultValue
+end
+
+---Returns the only element, optionally matching a predicate; errors if there are zero or multiple matches.
+---@param self table
+---@param predicate? fun(value: any, key: any): boolean
+---@return any
+function Enumerator3.single(self, predicate)
+    local result = getSingleItem(self, predicate, nil)
+    if result == nil then
+        error('Sequence contains no (matching) elements.')
+    end
+    return result
+end
+
+---Returns the only element matching a predicate, or a default when there are no matches.
+---Errors if more than one element matches.
+---@param self table
+---@param predicate? fun(value: any, key: any): boolean
+---@param defaultValue? any
+---@return any
+function Enumerator3.singleOrDefault(self, predicate, defaultValue)
+    return getSingleItem(self, predicate, defaultValue)
 end
 
 ---Returns the number of elements in a sequence, optionally counting only matches.
