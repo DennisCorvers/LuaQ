@@ -1384,10 +1384,19 @@ function Enumerator3.foreach(self, func)
     return nil
 end
 
+---Returns the iterator, state, and initial index for use in a generic for loop.
+---Use this method when the Lua runtime does not support ipairs metamethods.
+---@return fun(state: any, index: any): any, any Iterator function
+---@return any Iterator state
+---@return any Initial index
 function Enumerator3.ipairs(self)
     return getIterator(self)
 end
 
+---Returns the iterator, state, and initial index for use in a generic for loop.
+---@return fun(state: any, index: any): any, any Iterator function
+---@return any Iterator state
+---@return any Initial index
 function Enumerator3.pairs(self)
     return getIterator(self)
 end
@@ -1632,6 +1641,7 @@ end
 -- Function aliasses
 --------------------------------------------------------------------------------
 --#region Function aliases
+Enumerator3.from = Enumerator3.create
 Enumerator3.select = Enumerator3.map
 Enumerator3.selectMany = Enumerator3.flatMap
 Enumerator3.distinct = Enumerator3.unique
