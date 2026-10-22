@@ -63,6 +63,13 @@ test("toLookup applies an element selector within each group", function()
     assertSequence(lookup.mage, { "Ada", "Cato" })
 end)
 
+test("toLookup preserves false keys and element values", function()
+    local lookup = Enumerator3.create({ "first", "second" })
+        :toLookup(function() return false end, function() return false end)
+
+    assertSequence(lookup[false], { false, false })
+end)
+
 test("toDictionary retains source keys and values without selectors", function()
     local players = {
         { name = "Ada" },

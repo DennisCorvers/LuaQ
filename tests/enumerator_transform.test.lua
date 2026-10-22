@@ -91,6 +91,11 @@ test("map with index", function()
     assertSequence(values, { 1, 6, 15, 28 })
 end)
 
+test("map preserves false values", function()
+    local values = Enumerator3.create({ 1 }):map(function() return false end)
+    assertSequence(values, { false })
+end)
+
 test("flatMap", function()
     local values = Enumerator3.create({
         {
@@ -147,6 +152,20 @@ test("concat enumerator", function()
     assertSequence(values, { 1, 2, 3, 4 })
 end)
 
+test("concat remains exhausted after the sequence ends", function()
+    local values = Enumerator3.create({ 1 }):concat({})
+    local nextValue, context, index = values.nextFunc, values.contextFactory(), values.index
+
+    index = nextValue(context, index)
+    local endedIndex, endedValue = nextValue(context, index)
+    local repeatedEndIndex, repeatedEndValue = nextValue(context, endedIndex)
+
+    assertEqual(endedIndex, nil)
+    assertEqual(endedValue, nil)
+    assertEqual(repeatedEndIndex, nil)
+    assertEqual(repeatedEndValue, nil)
+end)
+
 test("unique", function()
     local values = Enumerator3.create({ 1, 1, 2, 3, 2 })
         :unique()
@@ -161,6 +180,28 @@ test("unique with key selector", function()
         }):unique(function(value) return value.id end)
         :map(function(value) return value.name end)
     assertSequence(values, { "first", "second" })
+end)
+
+test("set operators preserve false key selector results", function()
+    local first = { id = 1 }
+    local duplicate = { id = 2 }
+
+    assertSequence(
+        Enumerator3.create({ first, duplicate }):unique(function() return false end),
+        { first }
+    )
+    assertSequence(
+        Enumerator3.create({ first }):difference({ duplicate }, function() return false end),
+        {}
+    )
+    assertSequence(
+        Enumerator3.create({ first, duplicate }):union({ { id = 3 } }, function() return false end),
+        { first }
+    )
+    assertSequence(
+        Enumerator3.create({ first, duplicate }):intersect({ duplicate }, function() return false end),
+        { first }
+    )
 end)
 
 test("difference", function()
@@ -225,6 +266,11 @@ test("zip", function()
     assertSequence(values, { 11, 22 })
 end)
 
+test("zip preserves false selector results", function()
+    local values = Enumerator3.create({ 1 }):zip({ 2 }, function() return false end)
+    assertSequence(values, { false })
+end)
+
 test("groupBy", function()
     local players = {
         { name = "Ada",  role = "mage" },
@@ -279,6 +325,12 @@ test("groupByResult", function()
     assertEqual(totals.ranger.totalScore, 8)
 end)
 
+test("groupByResult preserves false selector results", function()
+    local values = Enumerator3.create({ 1 })
+        :groupByResult(function() return "group" end, nil, function() return false end)
+    assertEqual(values:first(), false)
+end)
+
 test("sort", function()
     local values = Enumerator3.create({ 3, 1, 2 })
         :sort()
@@ -314,6 +366,19 @@ test("thenBy", function()
         :thenBy(function(item) return item.name end)
         :map(function(item) return item.name end)
     assertSequence(values, { "a", "b", "c" })
+end)
+
+test("thenBy applies chained criteria in order", function()
+    local values = Enumerator3.create({
+        { primary = 1, secondary = 2, tertiary = 1 },
+        { primary = 1, secondary = 1, tertiary = 2 },
+        { primary = 0, secondary = 9, tertiary = 0 },
+    }):sortBy(function(item) return item.primary end)
+        :thenBy(function(item) return item.secondary end)
+        :thenBy(function(item) return item.tertiary end)
+        :map(function(item) return item.primary .. ":" .. item.secondary end)
+
+    assertSequence(values, { "0:9", "1:1", "1:2" })
 end)
 
 test("thenByDecending", function()

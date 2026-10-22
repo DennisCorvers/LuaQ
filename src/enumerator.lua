@@ -281,7 +281,7 @@ local mapFunc = function(context, index)
     index, current = nextFunc(nextContext, index)
     if index ~= nil then
         current = selector(current, position)
-        assert(current, 'Selected value must be non-nil')
+        assert(current ~= nil, 'Selected value must be non-nil')
         context[5] = position
         return index, current
     end
@@ -302,7 +302,7 @@ local flatMapFunc = function(context, index)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
-    -- 4: Predicate
+    -- 4: Selector
     -- 5: Position
     -- 6: Parent Index
     -- 7: Nested Iterator
@@ -372,7 +372,7 @@ local concatFunc = function(context, index)
     -- 4: Second (collection/table)
 
     if state == -4 then
-        return false
+        return nil, nil
     end
 
     if state == 0 then
@@ -583,7 +583,10 @@ local uniqueFunc = function(context, key)
 
         if state == 1 then
             state = 2
-            local selectedKey = keySelector and keySelector(current, key) or current
+            local selectedKey = current
+            if keySelector ~= nil then
+                selectedKey = keySelector(current, key)
+            end
             if addToSet(set, selectedKey) == true then
                 setState(context, state)
                 return key, current
@@ -623,7 +626,10 @@ local differenceFunc = function(context, key)
     while true do
         key, current = nextFunc(nextContext, key)
         if key ~= nil then
-            local selectedKey = keySelector and keySelector(current, key) or current
+            local selectedKey = current
+            if keySelector ~= nil then
+                selectedKey = keySelector(current, key)
+            end
             if addToSet(set, selectedKey) == true then
                 return key, current
             end
@@ -672,7 +678,10 @@ local unionFunc = function(context, key)
             key, current = moveIterator(nextContext)
             if key == nil then break end
 
-            local selectedKey = keySelector and keySelector(current, key) or current
+            local selectedKey = current
+            if keySelector ~= nil then
+                selectedKey = keySelector(current, key)
+            end
             if addToSet(set, selectedKey) == true then
                 return key, current
             end
@@ -730,7 +739,10 @@ local intersectFunc = function(context, key)
             return nil, nil
         end
 
-        local selectedKey = keySelector and keySelector(current, key) or current
+        local selectedKey = current
+        if keySelector ~= nil then
+            selectedKey = keySelector(current, key)
+        end
         if removeFromSet(set, selectedKey) == true then
             return key, current
         end
@@ -740,6 +752,7 @@ end
 ---Produces the set intersection of two sequences according to a specified key selector function.
 ---@param second table
 ---@param keySelector? fun(value: any, key: any): any
+---@return Enumerator3
 function Enumerator3:intersect(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
@@ -770,7 +783,10 @@ local zipFunc = function(context, index)
     local indexB, currentB = moveIterator(second)
 
     if indexA ~= nil and indexB ~= nil then
-        local result = resultSelector and resultSelector(currentA, currentB) or { currentA, currentB }
+        local result = { currentA, currentB }
+        if resultSelector ~= nil then
+            result = resultSelector(currentA, currentB)
+        end
         return indexA, result
     end
 
@@ -780,7 +796,7 @@ end
 
 ---Applies a specified function to the corresponding elements of two sequences, producing a sequence of the results.
 ---@param second table
----@param resultSelector? fun(itema: any, itemb: any): any
+---@param resultSelector? fun(itemA: any, itemB: any): any
 ---@return Enumerator3
 function Enumerator3:zip(second, resultSelector)
     assert(second, 'Second collection cannot be nil.')
@@ -819,7 +835,10 @@ local groupByFunc = function(context, index)
 
     local key, elements = nextFunc(nextContext, index)
     if key ~= nil then
-        local result = resultSelector and resultSelector(key, elements) or elements
+        local result = elements
+        if resultSelector ~= nil then
+            result = resultSelector(key, elements)
+        end
         return key, result
     end
 
@@ -838,13 +857,14 @@ function Enumerator3:groupBy(keySelector, elementSelector)
 end
 
 ---Groups the elements of a sequence and transforms each group into a result.
+---Pass nil for elementSelector when providing resultSelector without an element selector.
 ---@param keySelector fun(value: any): any
 ---@param elementSelector? fun(value: any): any
 ---@param resultSelector fun(key: any, elements: table): any
 ---@return Enumerator3
 function Enumerator3:groupByResult(keySelector, elementSelector, resultSelector)
     assert(keySelector, 'Key Selector cannot be nil.')
-    assert(resultSelector, 'Result Selctor cannot be nil.')
+    assert(resultSelector, 'Result Selector cannot be nil.')
 
     return Enumerator3.new(groupByFunc, self.index, wrapContextN(self, keySelector, elementSelector, resultSelector))
 end
@@ -856,16 +876,16 @@ local getSortFunction = function(sortSelectors)
     -- Special case where sort isn't chained.
     if #sortSelectors == 1 then
         local sortSelector = sortSelectors[1]
-        local acendingSort = sortSelector[1]
+        local ascendingSort = sortSelector[1]
         local sortSelector = sortSelector[2]
         if sortSelector ~= nil then
-            if acendingSort == true then
+            if ascendingSort == true then
                 return function(a, b) return sortSelector(a) < sortSelector(b) end
             else
                 return function(a, b) return sortSelector(a) > sortSelector(b) end
             end
         else
-            if acendingSort == true then
+            if ascendingSort == true then
                 return function(a, b) return a < b end
             else
                 return function(a, b) return a > b end
@@ -875,7 +895,7 @@ local getSortFunction = function(sortSelectors)
 
     -- Return chained sorting.
     return function(a, b)
-        for _, sortSelector in pairs(sortSelectors) do
+        for _, sortSelector in ipairs(sortSelectors) do
             local selector = sortSelector[2]
             local sortAscending = sortSelector[1]
 
@@ -931,25 +951,26 @@ end
 
 ---Boilerplate function to setup various sorting Enumerator3
 ---@param self Enumerator3
----@param isDecending boolean
+---@param isDescending boolean
 ---@param selector? fun(current: any): any
 ---@return Enumerator3
-local function getSorter(self, isDecending, selector)
-    local selectors = { { isDecending, selector } }
+local function getSorter(self, isDescending, selector)
+    local selectors = { { isDescending, selector } }
     return Enumerator3.new(sortFunc, self.index, wrapContext1(self, selectors))
 end
 
 ---Boilerplate function to chain one sort to the previous
----@param self table
----@param isDecending any
----@param selector any
-local function getChainedSorter(self, isDecending, selector)
+---@param self Enumerator3
+---@param isDescending boolean
+---@param selector fun(value: any): any
+---@return Enumerator3
+local function getChainedSorter(self, isDescending, selector)
     assert(self.nextFunc == sortFunc, 'Previous function must be a "sort" or "order" variant.')
 
     -- Since the context isn't accessible for the child, we unwrap the context first by calling the factory
     -- we can then access the context to add a new sortselector to it.
     local selectors = self.contextFactory()[4]
-    table.insert(selectors, { isDecending, selector })
+    table.insert(selectors, { isDescending, selector })
 
     -- Wrap context into a factory again.
     self.contextFactory = wrapContext1(self, selectors)
@@ -1024,7 +1045,7 @@ local equals = function(a, b)
     end
 end
 
----comment
+---Returns the 1-based position of the first item matching the item or comparer, or -1 if none is found.
 ---@param self Enumerator3
 ---@param item any
 ---@param comparer? fun(a: any, b: any): boolean
@@ -1068,7 +1089,7 @@ function Enumerator3.sequenceEquals(self, other, comparer)
 
     for _, v in getIterator(self) do
         index, current = next(context, index)
-        if cmp(v, current) == false then
+        if index == nil or cmp(v, current) ~= true then
             return false
         end
     end
@@ -1138,7 +1159,10 @@ local function getFirstItem(self, defaultValue)
         _, firstItem = nextFunc(context, index)
     end
 
-    return firstItem or defaultValue
+    if firstItem ~= nil then
+        return firstItem
+    end
+    return defaultValue
 end
 
 local function getLastItem(self, defaultValue)
@@ -1156,7 +1180,10 @@ local function getLastItem(self, defaultValue)
         lastItem = v
     end
 
-    return lastItem or defaultValue
+    if lastItem ~= nil then
+        return lastItem
+    end
+    return defaultValue
 end
 
 ---Returns the first item in the sequence, or a default value if there are no items in the sequence.
@@ -1210,7 +1237,10 @@ function Enumerator3.lastOrDefault(self, predicate, defaultValue)
         end
     end
 
-    return lastMatch or defaultValue
+    if lastMatch ~= nil then
+        return lastMatch
+    end
+    return defaultValue
 end
 
 ---Returns the last item in the sequence, or an error if there are no items in the sequence.
@@ -1538,7 +1568,7 @@ function Enumerator3.toLookup(self, keySelector, elementSelector)
     for key, value in getIterator(self) do
         -- Retrieve grouping by key
         local selectedKey = keySelector(value, key)
-        assert(selectedKey, 'Key cannot be nil.')
+        assert(selectedKey ~= nil, 'Key cannot be nil.')
         local grouping = lookup[selectedKey]
 
         -- Create new grouping if it doesn't exist.
@@ -1548,7 +1578,10 @@ function Enumerator3.toLookup(self, keySelector, elementSelector)
         end
 
         -- Add element to grouping
-        local element = elementSelector and elementSelector(value, key) or value
+        local element = value
+        if elementSelector ~= nil then
+            element = elementSelector(value, key)
+        end
         table.insert(grouping, element)
     end
 
