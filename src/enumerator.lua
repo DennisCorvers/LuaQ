@@ -6,7 +6,7 @@
 -- manual passing of the additional parameters is faster than using table.unpack
 
 -- Wraps a context object in a factory function with one additional parameter.
----@param enumerator Enumerator3
+---@param enumerator Enumerable
 ---@return fun():table
 local wrapContext0 = function(enumerator)
     local nextFunc, context = enumerator.nextFunc, enumerator.contextFactory
@@ -14,7 +14,7 @@ local wrapContext0 = function(enumerator)
 end
 
 -- Wraps a context object in a factory function with one additional parameter.
----@param enumerator Enumerator3
+---@param enumerator Enumerable
 ---@param param1 any
 ---@return fun():table
 local wrapContext1 = function(enumerator, param1)
@@ -23,7 +23,7 @@ local wrapContext1 = function(enumerator, param1)
 end
 
 -- Wraps a context object in a factory function with two additional parameters.
----@param enumerator Enumerator3
+---@param enumerator Enumerable
 ---@param param1 any
 ---@param param2 any
 ---@return fun():table
@@ -33,7 +33,7 @@ local wrapContext2 = function(enumerator, param1, param2)
 end
 
 -- Wraps a context object in a factory function with N additional parameters.
----@param enumerator Enumerator3
+---@param enumerator Enumerable
 ---@param ... unknown
 ---@return fun():table
 local wrapContextN = function(enumerator, ...)
@@ -115,14 +115,14 @@ end
 --#endregion
 
 --------------------------------------------------------------------------------
--- Enumerator object definition.
+-- Enumerable object definition.
 --------------------------------------------------------------------------------
---#region Enumerator object
---- @class Enumerator3
+--#region Enumerable object
+--- @class Enumerable
 --- @field nextFunc fun(context: any, index: any):any, any
 --- @field index any
 --- @field contextFactory fun(): table
-local Enumerator3 = {
+local Enumerable = {
     __call = function(self, param, state)
         return self.nextFunc(self.contextFactory(), state)
     end,
@@ -133,39 +133,39 @@ local Enumerator3 = {
         return self.nextFunc, self.contextFactory(), self.index
     end,
 }
-Enumerator3.__index = Enumerator3
+Enumerable.__index = Enumerable
 
----Creates an enumerator from an iterator function and a context factory.
+---Creates an Enumerable from an iterator function and a context factory.
 ---The iterator returns the next index and value; the context factory provides
----a fresh iterator context each time the enumerator is iterated.
+---a fresh iterator context each time the Enumerable is iterated.
 ---@param nextFunc fun(context: any, index: any): nextIndex: any, value: any
 ---@param index any Initial index passed to the iterator function.
 ---@param contextFactory fun(): any Factory that returns the iterator context.
----@return Enumerator3
-function Enumerator3.new(nextFunc, index, contextFactory)
+---@return Enumerable
+function Enumerable.new(nextFunc, index, contextFactory)
     return setmetatable({
         nextFunc = nextFunc,
         index = index,
         contextFactory = contextFactory
-    }, Enumerator3)
+    }, Enumerable)
 end
 
----Creates an enumerator from an iterable object.
----@param obj any Iterable object, such as a table or another Enumerator3.
----@return Enumerator3
-function Enumerator3.create(obj)
+---Creates an Enumerable from an iterable object.
+---@param obj any Iterable object, such as a table or another Enumerable.
+---@return Enumerable
+function Enumerable.create(obj)
     local func, current, index = getIterator(obj)
-    return Enumerator3.new(func, index, function() return current end)
+    return Enumerable.new(func, index, function() return current end)
 end
 
----Creates an enumerator for an object using a custom iterator factory.
+---Creates an Enumerable for an object using a custom iterator factory.
 ---The factory must return a next function, its context, and the initial index.
 ---@param obj any
 ---@param iterator fun(obj: any): any, any, any
----@return Enumerator3
-function Enumerator3.createFrom(obj, iterator)
+---@return Enumerable
+function Enumerable.createFrom(obj, iterator)
     local func, current, index = iterator(obj)
-    return Enumerator3.new(func, index, function() return current end)
+    return Enumerable.new(func, index, function() return current end)
 end
 
 --#endregion
@@ -179,7 +179,7 @@ getIterator = function(obj, context, index)
     if type(obj) == 'table' then
         local mt = getmetatable(obj);
         if mt ~= nil then
-            if mt == Enumerator3 then
+            if mt == Enumerable then
                 return obj.nextFunc, obj.contextFactory(), obj.index
             elseif mt.__ipairs ~= nil then
                 return mt.__ipairs(obj)
@@ -250,10 +250,10 @@ end
 
 ---Filters a sequence of values based on a predicate.
 ---@param predicate fun(item: any, index?: integer): boolean
----@return Enumerator3
-function Enumerator3:where(predicate)
+---@return Enumerable
+function Enumerable:where(predicate)
     assert(predicate, 'Predicate cannot be nil')
-    return Enumerator3.new(whereFunc, self.index, wrapContext2(self, predicate, 0))
+    return Enumerable.new(whereFunc, self.index, wrapContext2(self, predicate, 0))
 end
 
 -- MAP / SELECT
@@ -291,10 +291,10 @@ end
 
 ---Projects each element of a sequence into a new form.
 ---@param selector fun(item: any, index?: integer): any
----@return Enumerator3
-function Enumerator3:map(selector)
+---@return Enumerable
+function Enumerable:map(selector)
     assert(selector, 'Selector cannot be nil')
-    return Enumerator3.new(mapFunc, self.index, wrapContext2(self, selector, 0))
+    return Enumerable.new(mapFunc, self.index, wrapContext2(self, selector, 0))
 end
 
 -- FLATMAP / SELECTMANY
@@ -358,10 +358,10 @@ end
 
 ---Projects each element of a sequence and flattens the resulting sequences into one sequence.
 ---@param selector fun(item: any, index?: integer): table
----@return Enumerator3
-function Enumerator3:flatMap(selector)
+---@return Enumerable
+function Enumerable:flatMap(selector)
     assert(selector, 'Selector cannot be nil')
-    return Enumerator3.new(flatMapFunc, self.index, wrapContext2(self, selector, 0))
+    return Enumerable.new(flatMapFunc, self.index, wrapContext2(self, selector, 0))
 end
 
 -- CONCAT
@@ -401,10 +401,10 @@ end
 
 ---Concatenates two sequences.
 ---@param second table
----@return Enumerator3
-function Enumerator3:concat(second)
+---@return Enumerable
+function Enumerable:concat(second)
     assert(second, 'Second cannot be nil')
-    return Enumerator3.new(concatFunc, self.index, wrapContext1(self, second))
+    return Enumerable.new(concatFunc, self.index, wrapContext1(self, second))
 end
 
 -- APPEND
@@ -488,10 +488,10 @@ end
 
 ---Returns at most the specified number of elements from the start of a sequence.
 ---@param count integer
----@return Enumerator3
-function Enumerator3:take(count)
+---@return Enumerable
+function Enumerable:take(count)
     assert(type(count) == 'number' and count >= 0 and count % 1 == 0, 'Count must be a non-negative integer.')
-    return Enumerator3.new(takeFunc, self.index, wrapContext2(self, count, 0))
+    return Enumerable.new(takeFunc, self.index, wrapContext2(self, count, 0))
 end
 
 -- TAKE WHILE
@@ -531,10 +531,10 @@ end
 ---Returns elements from the start of a sequence while the predicate returns true.
 ---Enumeration stops at the first element for which the predicate returns false.
 ---@param predicate fun(value: any, index?: integer): boolean
----@return Enumerator3
-function Enumerator3:takeWhile(predicate)
+---@return Enumerable
+function Enumerable:takeWhile(predicate)
     assert(type(predicate) == 'function', 'Predicate must be a function.')
-    return Enumerator3.new(takeWhileFunc, self.index, wrapContext2(self, predicate, 0))
+    return Enumerable.new(takeWhileFunc, self.index, wrapContext2(self, predicate, 0))
 end
 
 -- UNIQUE / DISTINCT
@@ -597,9 +597,9 @@ end
 
 ---Returns unique (distinct) elements from a sequence according to a specified key selector function.
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3
-function Enumerator3:unique(keySelector)
-    return Enumerator3.new(uniqueFunc, self.index, wrapContext1(self, keySelector))
+---@return Enumerable
+function Enumerable:unique(keySelector)
+    return Enumerable.new(uniqueFunc, self.index, wrapContext1(self, keySelector))
 end
 
 -- DIFFERENCE
@@ -618,7 +618,7 @@ local differenceFunc = function(context, key)
         end
     else
         nextContext = initialiseContext(context)
-        context[6] = Enumerator3.toSet(context[4], keySelector)
+        context[6] = Enumerable.toSet(context[4], keySelector)
         setState(context, 1)
     end
 
@@ -643,11 +643,11 @@ end
 ---Produces the set difference of two sequences according to a specified key selector function.
 ---@param second table
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3
-function Enumerator3:difference(second, keySelector)
+---@return Enumerable
+function Enumerable:difference(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
-    return Enumerator3.new(differenceFunc, self.index, wrapContext2(self, second, keySelector))
+    return Enumerable.new(differenceFunc, self.index, wrapContext2(self, second, keySelector))
 end
 
 -- UNION
@@ -704,11 +704,11 @@ end
 ---Produces the set union of two sequences according to a specified key selector function.
 ---@param second table
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3
-function Enumerator3:union(second, keySelector)
+---@return Enumerable
+function Enumerable:union(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
-    return Enumerator3.new(unionFunc, self.index, wrapContext2(self, second, keySelector))
+    return Enumerable.new(unionFunc, self.index, wrapContext2(self, second, keySelector))
 end
 
 -- INTERSECT
@@ -727,7 +727,7 @@ local intersectFunc = function(context, key)
         end
     else
         nextContext = initialiseContext(context)
-        context[6] = Enumerator3.toSet(context[4], keySelector)
+        context[6] = Enumerable.toSet(context[4], keySelector)
         state = setState(context, 1)
     end
 
@@ -752,11 +752,11 @@ end
 ---Produces the set intersection of two sequences according to a specified key selector function.
 ---@param second table
 ---@param keySelector? fun(value: any, key: any): any
----@return Enumerator3
-function Enumerator3:intersect(second, keySelector)
+---@return Enumerable
+function Enumerable:intersect(second, keySelector)
     assert(second, 'Second collection cannot be nil.')
 
-    return Enumerator3.new(intersectFunc, self.index, wrapContext2(self, second, keySelector))
+    return Enumerable.new(intersectFunc, self.index, wrapContext2(self, second, keySelector))
 end
 
 -- ZIP
@@ -797,11 +797,11 @@ end
 ---Applies a specified function to the corresponding elements of two sequences, producing a sequence of the results.
 ---@param second table
 ---@param resultSelector? fun(itemA: any, itemB: any): any
----@return Enumerator3
-function Enumerator3:zip(second, resultSelector)
+---@return Enumerable
+function Enumerable:zip(second, resultSelector)
     assert(second, 'Second collection cannot be nil.')
 
-    return Enumerator3.new(zipFunc, self.index, wrapContext2(self, second, resultSelector))
+    return Enumerable.new(zipFunc, self.index, wrapContext2(self, second, resultSelector))
 end
 
 -- GROUPBY / GROUPBYRESULT
@@ -824,7 +824,7 @@ local groupByFunc = function(context, index)
 
         local keySelector = context[4]
         local elementSelector = context[5]
-        local lookup = Enumerator3.toLookup(iterator, keySelector, elementSelector)
+        local lookup = Enumerable.toLookup(iterator, keySelector, elementSelector)
 
         -- Overwrite iterator with new iterator.
         nextFunc, nextContext, index = getIterator(lookup)
@@ -849,11 +849,11 @@ end
 ---Groups the elements of a sequence.
 ---@param keySelector fun(param: any): any
 ---@param elementSelector? fun(param: any): any
----@return Enumerator3
-function Enumerator3:groupBy(keySelector, elementSelector)
+---@return Enumerable
+function Enumerable:groupBy(keySelector, elementSelector)
     assert(keySelector, 'Key Selector cannot be nil.')
 
-    return Enumerator3.new(groupByFunc, self.index, wrapContext2(self, keySelector, elementSelector))
+    return Enumerable.new(groupByFunc, self.index, wrapContext2(self, keySelector, elementSelector))
 end
 
 ---Groups the elements of a sequence and transforms each group into a result.
@@ -861,12 +861,12 @@ end
 ---@param keySelector fun(value: any): any
 ---@param elementSelector? fun(value: any): any
 ---@param resultSelector fun(key: any, elements: table): any
----@return Enumerator3
-function Enumerator3:groupByResult(keySelector, elementSelector, resultSelector)
+---@return Enumerable
+function Enumerable:groupByResult(keySelector, elementSelector, resultSelector)
     assert(keySelector, 'Key Selector cannot be nil.')
     assert(resultSelector, 'Result Selector cannot be nil.')
 
-    return Enumerator3.new(groupByFunc, self.index, wrapContextN(self, keySelector, elementSelector, resultSelector))
+    return Enumerable.new(groupByFunc, self.index, wrapContextN(self, keySelector, elementSelector, resultSelector))
 end
 
 -- SORTING
@@ -949,21 +949,21 @@ local sortFunc = function(context, index)
     return nil, nil
 end
 
----Boilerplate function to setup various sorting Enumerator3
----@param self Enumerator3
+---Boilerplate function to setup various sorting Enumerable
+---@param self Enumerable
 ---@param isDescending boolean
 ---@param selector? fun(current: any): any
----@return Enumerator3
+---@return Enumerable
 local function getSorter(self, isDescending, selector)
     local selectors = { { isDescending, selector } }
-    return Enumerator3.new(sortFunc, self.index, wrapContext1(self, selectors))
+    return Enumerable.new(sortFunc, self.index, wrapContext1(self, selectors))
 end
 
 ---Boilerplate function to chain one sort to the previous
----@param self Enumerator3
+---@param self Enumerable
 ---@param isDescending boolean
 ---@param selector fun(value: any): any
----@return Enumerator3
+---@return Enumerable
 local function getChainedSorter(self, isDescending, selector)
     assert(self.nextFunc == sortFunc, 'Previous function must be a "sort" or "order" variant.')
 
@@ -978,42 +978,42 @@ local function getChainedSorter(self, isDescending, selector)
 end
 
 ---Sorts the sequence in ascending order by its values.
----@return Enumerator3
-function Enumerator3:sort()
+---@return Enumerable
+function Enumerable:sort()
     return getSorter(self, true)
 end
 
 ---Sorts the sequence in descending order by its values.
----@return Enumerator3
-function Enumerator3:sortDescending()
+---@return Enumerable
+function Enumerable:sortDescending()
     return getSorter(self, false)
 end
 
 ---Sorts the sequence in ascending order using a selector.
 ---@param selector fun(value: any): any
----@return Enumerator3
-function Enumerator3:sortBy(selector)
+---@return Enumerable
+function Enumerable:sortBy(selector)
     return getSorter(self, true, selector)
 end
 
 ---Sorts the sequence in descending order using a selector.
 ---@param selector fun(value: any): any
----@return Enumerator3
-function Enumerator3:sortByDescending(selector)
+---@return Enumerable
+function Enumerable:sortByDescending(selector)
     return getSorter(self, false, selector)
 end
 
 ---Adds an ascending sort criterion to the previous sort.
 ---@param selector fun(value: any): any
----@return Enumerator3
-function Enumerator3:thenBy(selector)
+---@return Enumerable
+function Enumerable:thenBy(selector)
     return getChainedSorter(self, true, selector)
 end
 
 ---Adds a descending sort criterion to the previous sort.
 ---@param selector fun(value: any): any
----@return Enumerator3
-function Enumerator3:thenByDecending(selector)
+---@return Enumerable
+function Enumerable:thenByDecending(selector)
     return getChainedSorter(self, false, selector)
 end
 
@@ -1039,18 +1039,18 @@ local equals = function(a, b)
     end
 
     if atype == 'table' then
-        return Enumerator3.sequenceEquals(a, b)
+        return Enumerable.sequenceEquals(a, b)
     else
         return result
     end
 end
 
 ---Returns the 1-based position of the first item matching the item or comparer, or -1 if none is found.
----@param self Enumerator3
+---@param self Enumerable
 ---@param item any
 ---@param comparer? fun(a: any, b: any): boolean
 ---@return integer
-function Enumerator3.indexOf(self, item, comparer)
+function Enumerable.indexOf(self, item, comparer)
     local index = 1
     local cmp = comparer or equals
     for _, v in getIterator(self) do
@@ -1067,7 +1067,7 @@ end
 ---@param item any
 ---@param comparer? fun(a: any, b: any): boolean
 ---@return boolean
-function Enumerator3.contains(self, item, comparer)
+function Enumerable.contains(self, item, comparer)
     local cmp = comparer or equals
     for _, v in getIterator(self) do
         if cmp(v, item) == true then
@@ -1082,7 +1082,7 @@ end
 ---@param other table
 ---@param comparer? fun(a: any, b: any): boolean
 ---@return boolean
-function Enumerator3.sequenceEquals(self, other, comparer)
+function Enumerable.sequenceEquals(self, other, comparer)
     local cmp = comparer or equals
 
     local next, context, index, current = getIterator(other)
@@ -1127,7 +1127,7 @@ end
 ---@param self table
 ---@param index integer
 ---@return any
-function Enumerator3.elementAt(self, index)
+function Enumerable.elementAt(self, index)
     local value = elementAt(self, index)
     if value ~= nil then
         return value
@@ -1140,7 +1140,7 @@ end
 ---@param index integer
 ---@param defaultValue? any
 ---@return any
-function Enumerator3.elementAtOrDefault(self, index, defaultValue)
+function Enumerable.elementAtOrDefault(self, index, defaultValue)
     local value = elementAt(self, index)
     if value ~= nil then
         return value
@@ -1191,7 +1191,7 @@ end
 ---@param predicate? fun(value: any, key: any): boolean
 ---@param defaultValue? any
 ---@return any
-function Enumerator3.firstOrDefault(self, predicate, defaultValue)
+function Enumerable.firstOrDefault(self, predicate, defaultValue)
     if predicate == nil then
         return getFirstItem(self, defaultValue)
     end
@@ -1210,8 +1210,8 @@ end
 ---@param self table
 ---@param predicate? fun(value: any, key: any): boolean
 ---@return any
-function Enumerator3.first(self, predicate)
-    local result = Enumerator3.firstOrDefault(self, predicate, nil)
+function Enumerable.first(self, predicate)
+    local result = Enumerable.firstOrDefault(self, predicate, nil)
     if result == nil then
         error('Sequence contains no (matching) elements.')
     else
@@ -1224,7 +1224,7 @@ end
 ---@param predicate? fun(value: any, key: any): boolean
 ---@param defaultValue? any
 ---@return any
-function Enumerator3.lastOrDefault(self, predicate, defaultValue)
+function Enumerable.lastOrDefault(self, predicate, defaultValue)
     if predicate == nil then
         return getLastItem(self, defaultValue)
     end
@@ -1247,8 +1247,8 @@ end
 ---@param self table
 ---@param predicate? fun(value: any, key: any): boolean
 ---@return any
-function Enumerator3.last(self, predicate)
-    local result = Enumerator3.lastOrDefault(self, predicate, nil)
+function Enumerable.last(self, predicate)
+    local result = Enumerable.lastOrDefault(self, predicate, nil)
     if result == nil then
         error('Sequence contains no (matching) elements.')
     else
@@ -1280,7 +1280,7 @@ end
 ---@param self table
 ---@param predicate? fun(value: any, key: any): boolean
 ---@return any
-function Enumerator3.single(self, predicate)
+function Enumerable.single(self, predicate)
     local result = getSingleItem(self, predicate, nil)
     if result == nil then
         error('Sequence contains no (matching) elements.')
@@ -1294,7 +1294,7 @@ end
 ---@param predicate? fun(value: any, key: any): boolean
 ---@param defaultValue? any
 ---@return any
-function Enumerator3.singleOrDefault(self, predicate, defaultValue)
+function Enumerable.singleOrDefault(self, predicate, defaultValue)
     return getSingleItem(self, predicate, defaultValue)
 end
 
@@ -1302,7 +1302,7 @@ end
 ---@param self table
 ---@param predicate? fun(value: any, key: any): boolean
 ---@return integer
-function Enumerator3.count(self, predicate)
+function Enumerable.count(self, predicate)
     local nextFunc, context, index = getIterator(self)
 
     -- Shortcut for arrays. Applies only when no predicate is provided.
@@ -1327,10 +1327,10 @@ function Enumerator3.count(self, predicate)
 end
 
 --- Determines whether all elements of a sequence satisfy a condition.
----@param self Enumerator3
+---@param self Enumerable
 ---@param predicate fun(current: any, key: any): boolean
 ---@return boolean
-function Enumerator3.all(self, predicate)
+function Enumerable.all(self, predicate)
     assert(predicate)
     for key, value in getIterator(self) do
         if predicate(value, key) == false then
@@ -1341,10 +1341,10 @@ function Enumerator3.all(self, predicate)
 end
 
 ---Determines whether any element of a sequence exists or satisfies a condition.
----@param self Enumerator3
+---@param self Enumerable
 ---@param predicate? fun(current: any, key: any): boolean
 ---@return boolean
-function Enumerator3.any(self, predicate)
+function Enumerable.any(self, predicate)
     local nextFunc, context, index = getIterator(self)
     -- Check without predicate (just need a first item to exist)
     if predicate == nil then
@@ -1375,7 +1375,7 @@ end
 --------------------------------------------------------------------------------
 --#region Iteration functions
 
-function Enumerator3.foreach(self, func)
+function Enumerable.foreach(self, func)
     assert(type(func) == 'function')
 
     for _, current in getIterator(self) do
@@ -1389,7 +1389,7 @@ end
 ---@return fun(state: any, index: any): any, any Iterator function
 ---@return any Iterator state
 ---@return any Initial index
-function Enumerator3.ipairs(self)
+function Enumerable.ipairs(self)
     return getIterator(self)
 end
 
@@ -1397,7 +1397,7 @@ end
 ---@return fun(state: any, index: any): any, any Iterator function
 ---@return any Iterator state
 ---@return any Initial index
-function Enumerator3.pairs(self)
+function Enumerable.pairs(self)
     return getIterator(self)
 end
 
@@ -1414,7 +1414,7 @@ end
 ---@param seed? any
 ---@param resultSelector? fun(result: any): any
 ---@return any
-function Enumerator3.aggregate(self, func, seed, resultSelector)
+function Enumerable.aggregate(self, func, seed, resultSelector)
     assert(func, 'Aggregate function cannot be nil.')
 
     local result = seed
@@ -1489,10 +1489,10 @@ local minmax = function(self, comparison)
 end
 
 ---Returns the maximum value, or the item with the maximum selected value.
----@param self Enumerator3
+---@param self Enumerable
 ---@param selector? fun(item: any, key: any): number
 ---@return any
-function Enumerator3.max(self, selector)
+function Enumerable.max(self, selector)
     if selector ~= nil then
         return minmaxBy(self, selector, maxCmp)
     else
@@ -1501,10 +1501,10 @@ function Enumerator3.max(self, selector)
 end
 
 ---Returns the minimum value, or the item with the minimum selected value.
----@param self Enumerator3
+---@param self Enumerable
 ---@param selector? fun(item: any, key: any): number
 ---@return any
-function Enumerator3.min(self, selector)
+function Enumerable.min(self, selector)
     if selector ~= nil then
         return minmaxBy(self, selector, minCmp)
     else
@@ -1513,10 +1513,10 @@ function Enumerator3.min(self, selector)
 end
 
 ---Returns the sum value of a sequence of values.
----@param self Enumerator3
+---@param self Enumerable
 ---@param selector? fun(value: any, key: any): number
 ---@return number
-function Enumerator3.sum(self, selector)
+function Enumerable.sum(self, selector)
     local total = 0
     if selector == nil then
         for _, value in getIterator(self) do
@@ -1533,15 +1533,15 @@ end
 --#endregion
 
 --------------------------------------------------------------------------------
--- Enumerator functions that result in a new collection.
+-- Enumerable functions that result in a new collection.
 --------------------------------------------------------------------------------
 --#region Collection functions
 
----Creates a set from a table|Enumerator3 with a specified key for uniqueness.
+---Creates a set from a table|Enumerable with a specified key for uniqueness.
 ---@param self table
 ---@param keySelector? fun(value: any, key: any): any
 ---@return table
-function Enumerator3.toSet(self, keySelector)
+function Enumerable.toSet(self, keySelector)
     local set = {}
     for key, current in getIterator(self) do
         if keySelector == nil then
@@ -1554,10 +1554,10 @@ function Enumerator3.toSet(self, keySelector)
     return set
 end
 
----Creates an array from a table|Enumerator3
+---Creates an array from a table|Enumerable
 ---@param self table
 ---@return table
-function Enumerator3.toTable(self)
+function Enumerable.toTable(self)
     local tab = {}
     for _, value in getIterator(self) do
         table.insert(tab, value)
@@ -1565,13 +1565,13 @@ function Enumerator3.toTable(self)
     return tab
 end
 
----Creates a lookup from a table|Enumerator3.
+---Creates a lookup from a table|Enumerable.
 ---The selectors receive each value and its source key.
 ---@param self table
 ---@param keySelector fun(value: any, key: any): any
 ---@param elementSelector? fun(value: any, key: any): any
 ---@return table
-function Enumerator3.toLookup(self, keySelector, elementSelector)
+function Enumerable.toLookup(self, keySelector, elementSelector)
     local lookup = {}
 
     for key, value in getIterator(self) do
@@ -1598,11 +1598,11 @@ function Enumerator3.toLookup(self, keySelector, elementSelector)
 end
 
 ---Creates a map (key, value) structure based on a keyselector and an elementselector
----@param self Enumerator3
+---@param self Enumerable
 ---@param keySelector? fun(value: any, key: any): any
 ---@param elementSelector? fun(value: any, key: any): any
 ---@return table
-function Enumerator3.toMap(self, keySelector, elementSelector)
+function Enumerable.toMap(self, keySelector, elementSelector)
     local dictionary = {}
 
     for key, value in getIterator(self) do
@@ -1621,13 +1621,13 @@ end
 ---Creates a deep copy of the provided object.
 ---@param self any
 ---@return any
-function Enumerator3.deepCopy(self)
+function Enumerable.deepCopy(self)
     local orig_type = type(self)
     local copy
     if orig_type == 'table' then
         copy = {}
         for k, v in getIterator(self) do
-            copy[Enumerator3.deepCopy(k)] = Enumerator3.deepCopy(v)
+            copy[Enumerable.deepCopy(k)] = Enumerable.deepCopy(v)
         end
     else
         copy = self
@@ -1641,28 +1641,28 @@ end
 -- Function aliasses
 --------------------------------------------------------------------------------
 --#region Function aliases
-Enumerator3.from = Enumerator3.create
-Enumerator3.select = Enumerator3.map
-Enumerator3.selectMany = Enumerator3.flatMap
-Enumerator3.distinct = Enumerator3.unique
-Enumerator3.except = Enumerator3.difference
-Enumerator3.order = Enumerator3.sort
-Enumerator3.orderDecending = Enumerator3.sortDescending
-Enumerator3.orderBy = Enumerator3.sortBy
-Enumerator3.orderByDecending = Enumerator3.sortByDescending
+Enumerable.from = Enumerable.create
+Enumerable.select = Enumerable.map
+Enumerable.selectMany = Enumerable.flatMap
+Enumerable.distinct = Enumerable.unique
+Enumerable.except = Enumerable.difference
+Enumerable.order = Enumerable.sort
+Enumerable.orderDecending = Enumerable.sortDescending
+Enumerable.orderBy = Enumerable.sortBy
+Enumerable.orderByDecending = Enumerable.sortByDescending
 
-Enumerator3.each = Enumerator3.foreach
-Enumerator3.for_each = Enumerator3.foreach
-Enumerator3.length = Enumerator3.count
-Enumerator3.countBy = Enumerator3.count
-Enumerator3.lengthBy = Enumerator3.count
-Enumerator3.has = Enumerator3.contains
-Enumerator3.fold = Enumerator3.aggregate
-Enumerator3.reduce = Enumerator3.aggregate
+Enumerable.each = Enumerable.foreach
+Enumerable.for_each = Enumerable.foreach
+Enumerable.length = Enumerable.count
+Enumerable.countBy = Enumerable.count
+Enumerable.lengthBy = Enumerable.count
+Enumerable.has = Enumerable.contains
+Enumerable.fold = Enumerable.aggregate
+Enumerable.reduce = Enumerable.aggregate
 
-Enumerator3.toDictionary = Enumerator3.toMap
-Enumerator3.toMultimap = Enumerator3.toLookup
+Enumerable.toDictionary = Enumerable.toMap
+Enumerable.toMultimap = Enumerable.toLookup
 
 --#endregion
 
-return Enumerator3
+return Enumerable
