@@ -55,7 +55,28 @@ end)
 test("take with zero count", function()
     local values = Enumerator3.create({ 1, 2, 3 }):take(0)
     assertSequence(values, {})
-    assertEqual(values:count(), 2)
+    assertEqual(values:count(), 0)
+end)
+
+test("takeWhile", function()
+    local values = Enumerator3.create({ 1, 2, 3, 1 })
+        :takeWhile(function(value) return value < 3 end)
+
+    assertSequence(values, { 1, 2 })
+end)
+
+test("takeWhile stops when the first item fails", function()
+    local values = Enumerator3.create({ 3, 1, 2 })
+        :takeWhile(function(value) return value < 3 end)
+
+    assertSequence(values, {})
+end)
+
+test("takeWhile passes a 1-based index", function()
+    local values = Enumerator3.create({ 1, 2, 3, 4 })
+        :takeWhile(function(value, index) return value == index end)
+
+    assertSequence(values, { 1, 2, 3, 4 })
 end)
 
 test("map", function()

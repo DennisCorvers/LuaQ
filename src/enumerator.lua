@@ -442,26 +442,21 @@ local takeFunc = function(context, index)
     local state = context[1]
     local nextFunc = context[2]
     local nextContext = context[3]
-    local count = context[4]
-    -- 5: Number of elements already yielded
 
     if state ~= 0 then
         if state ~= 1 then
             return nil, nil
         end
     else
-        -- Initialise. Count 0 is empty sequence.
-        if count == 0 then
-            setState(context, -4)
-            return nil, nil
-        end
-
+        -- Initialise.
         nextContext = initialiseContext(context)
         state = setState(context, 1)
     end
 
-    -- Current position exceeds the count.
+    local count = context[4]
     local position = context[5]
+
+    -- Current position exceeds the count.
     if position >= count then
         setState(context, -4)
         return nil, nil
@@ -483,7 +478,50 @@ end
 ---@return Enumerator3
 function Enumerator3:take(count)
     assert(type(count) == 'number' and count >= 0 and count % 1 == 0, 'Count must be a non-negative integer.')
-    return Enumerator3.new(takeFunc, self.index, wrapContext1(self, count))
+    return Enumerator3.new(takeFunc, self.index, wrapContext2(self, count, 0))
+end
+
+-- TAKE WHILE
+local takeWhileFunc = function(context, index)
+    local state = context[1]
+    local nextFunc = context[2]
+    local nextContext = context[3]
+
+
+    if state ~= 0 then
+        if state ~= 1 then
+            return nil, nil
+        end
+    else
+        nextContext = initialiseContext(context)
+        state = setState(context, 1)
+    end
+
+    local nextIndex, value = nextFunc(nextContext, index)
+    if nextIndex == nil then
+        setState(context, -4)
+        return nil, nil
+    end
+
+    local predicate = context[4]
+    local position = context[5] + 1
+
+    if predicate(value, position) ~= true then
+        setState(context, -4)
+        return nil, nil
+    end
+
+    context[5] = position
+    return nextIndex, value
+end
+
+---Returns elements from the start of a sequence while the predicate returns true.
+---Enumeration stops at the first element for which the predicate returns false.
+---@param predicate fun(value: any, index?: integer): boolean
+---@return Enumerator3
+function Enumerator3:takeWhile(predicate)
+    assert(type(predicate) == 'function', 'Predicate must be a function.')
+    return Enumerator3.new(takeWhileFunc, self.index, wrapContext2(self, predicate, 0))
 end
 
 -- UNIQUE / DISTINCT
