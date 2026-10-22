@@ -1,6 +1,7 @@
 --------------------------------------------------------------------------------
 -- Helper functions for wrapping and unwrapping the context (state) object.
 --------------------------------------------------------------------------------
+--#region Context helpers
 -- We define the most common wrapContext functions, since at lower parameter count
 -- manual passing of the additional parameters is faster than using table.unpack
 
@@ -83,9 +84,12 @@ local moveIterator = function(iterator)
     return index, context
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Helper functions for hashset behaviour
 --------------------------------------------------------------------------------
+--#region Hashset helpers
 ---@param set table
 ---@param item any
 ---@return boolean
@@ -108,9 +112,12 @@ local removeFromSet = function(set, item)
     return true
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Enumerator object definition.
 --------------------------------------------------------------------------------
+--#region Enumerator object
 --- @class Enumerator3
 --- @field nextFunc fun(context: any, index: any):any, any
 --- @field index any
@@ -161,9 +168,12 @@ function Enumerator3.createFrom(obj, iterator)
     return Enumerator3.new(func, index, function() return current end)
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Helper function for setting up iterator.
 --------------------------------------------------------------------------------
+--#region Iterator setup
 getIterator = function(obj, context, index)
     assert(obj ~= nil, 'invalid iterator')
     if type(obj) == 'table' then
@@ -194,9 +204,12 @@ getIterator = function(obj, context, index)
     error(string.format('object %s of type "%s" is not iterable', obj, type(obj)))
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Chainable functions
 --------------------------------------------------------------------------------
+--#region Chainable functions
 
 -- WHERE
 local whereFunc = function(context, index)
@@ -983,9 +996,13 @@ function Enumerator3:thenByDecending(selector)
     return getChainedSorter(self, false, selector)
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Equality functions
 --------------------------------------------------------------------------------
+--#region Equality functions
+
 local equals = function(a, b)
     -- Start with a quick Lua equals comparison
     local result = a == b
@@ -1060,9 +1077,13 @@ function Enumerator3.sequenceEquals(self, other, comparer)
     return index == nil
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Sequence search functions
 --------------------------------------------------------------------------------
+--#region Sequence search functions
+
 local function getFirstItem(self, defaultValue)
     local firstItem = nil
 
@@ -1232,9 +1253,13 @@ function Enumerator3.any(self, predicate)
     return false
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Iteration via function
 --------------------------------------------------------------------------------
+--#region Iteration functions
+
 function Enumerator3.foreach(self, func)
     assert(type(func) == 'function')
 
@@ -1252,9 +1277,12 @@ function Enumerator3.pairs(self)
     return getIterator(self)
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Reduction
 --------------------------------------------------------------------------------
+--#region Reduction functions
 
 ---Applies an accumulator function over a sequence. The specified seed value is used as the initial accumulator value, and the specified function is used to select the result value.
 ---@param self table
@@ -1287,9 +1315,12 @@ function Enumerator3.aggregate(self, func, seed, resultSelector)
     return result
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Arithmetic functions
 --------------------------------------------------------------------------------
+--#region Arithmetic functions
 local maxCmp = function(a, b)
     if a < b then return true end
 end
@@ -1375,9 +1406,12 @@ function Enumerator3.sum(self, selector)
     return total
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Enumerator functions that result in a new collection.
 --------------------------------------------------------------------------------
+--#region Collection functions
 
 ---Creates a set from a table|Enumerator3 with a specified key for uniqueness.
 ---@param self table
@@ -1474,9 +1508,12 @@ function Enumerator3.deepCopy(self)
     return copy
 end
 
+--#endregion
+
 --------------------------------------------------------------------------------
 -- Function aliasses
 --------------------------------------------------------------------------------
+--#region Function aliases
 Enumerator3.select = Enumerator3.map
 Enumerator3.selectMany = Enumerator3.flatMap
 Enumerator3.distinct = Enumerator3.unique
@@ -1497,5 +1534,7 @@ Enumerator3.reduce = Enumerator3.aggregate
 
 Enumerator3.toDictionary = Enumerator3.toMap
 Enumerator3.toMultimap = Enumerator3.toLookup
+
+--#endregion
 
 return Enumerator3
