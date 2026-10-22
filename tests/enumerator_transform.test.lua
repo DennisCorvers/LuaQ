@@ -196,7 +196,7 @@ test("groupBy", function()
 
     local groups = Enumerator3.create(players)
         :groupBy(function(player) return player.role end)
-        :toDictionary()
+        :toMap()
 
     assertSequence(groups.mage, { players[1], players[3] })
     assertSequence(groups.ranger, { players[2] })
@@ -214,7 +214,7 @@ test("groupBy with element selector", function()
             function(player) return player.role end,
             function(player) return player.name end
         )
-        :toDictionary()
+        :toMap()
 
     assertSequence(namesByRole.mage, { "Ada", "Cato" })
     assertSequence(namesByRole.ranger, { "Bryn" })
@@ -235,7 +235,7 @@ test("groupByResult", function()
                 return { role = role, totalScore = Enumerator3.sum(scores) }
             end
         )
-        :toDictionary()
+        :toMap()
 
     assertEqual(totals.mage.totalScore, 27)
     assertEqual(totals.ranger.totalScore, 8)

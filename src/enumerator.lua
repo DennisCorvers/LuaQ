@@ -1345,12 +1345,12 @@ function Enumerator3.toLookup(self, keySelector, elementSelector)
     return lookup
 end
 
----Creates a dictionary (key, value) structure based on a keyselector and an elementselector
+---Creates a map (key, value) structure based on a keyselector and an elementselector
 ---@param self Enumerator3
 ---@param keySelector? fun(value: any, key: any): any
 ---@param elementSelector? fun(value: any, key: any): any
 ---@return table
-function Enumerator3.toDictionary(self, keySelector, elementSelector)
+function Enumerator3.toMap(self, keySelector, elementSelector)
     local dictionary = {}
 
     for key, value in getIterator(self) do
@@ -1403,5 +1403,8 @@ Enumerator3.lengthBy = Enumerator3.count
 Enumerator3.has = Enumerator3.contains
 Enumerator3.fold = Enumerator3.aggregate
 Enumerator3.reduce = Enumerator3.aggregate
+
+Enumerator3.toDictionary = Enumerator3.toMap
+Enumerator3.toMultimap = Enumerator3.toLookup
 
 return Enumerator3
